@@ -1,0 +1,37 @@
+#!/usr/bin/env php
+<?php
+declare(strict_types=1);
+
+require __DIR__ . '/../vendor/autoload.php';
+
+use Jaca\CLI;
+
+$argv = $_SERVER['argv'] ?? [];
+
+if (count($argv) < 2) {
+    echo "Usage: jaca <command> [arguments]\n";
+    exit(1);
+}
+
+$command = $argv[1];
+
+// Instancia a classe CLI que você vai criar (exemplo)
+$cli = new CLI();
+
+switch ($command) {
+    case 'compile':
+        $cli->compile();
+        break;
+    case 'create':
+        if (empty($argv[2])) {
+            echo "Usage: jaca create <type> [name]\n";
+            exit(1);
+        }
+        $type = $argv[2];
+        $name = $argv[3] ?? null;
+        $cli->create($type, $name);
+        break;
+    default:
+        echo "Unknown command: $command\n";
+        exit(1);
+}
