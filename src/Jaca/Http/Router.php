@@ -1,17 +1,12 @@
 <?php
 namespace Jaca\Http;
 
+use Jaca\Config\Constants;
+
 class Router
 {
-    private const URI_SEPARATOR = '/';
-    private const CB_SEPARATOR = '\\';
-    private const CONTROLLER_PATH = 'App';
-
-    private array $delimiters = ['-', '.', '_'];
-	private string $module;
-	private string $controller;
-	private string $action;
-	private array $params;
+	private array $delimiters = ['-', '.', '_'];
+	private RouteInfo $routeInfo;
 
     public function __construct(string $uri)
     {
@@ -20,8 +15,8 @@ class Router
 
     protected function parseUri(string $uri): void
     {
-        $uri = trim(parse_url($uri, PHP_URL_PATH), self::URI_SEPARATOR);
-        $segments = explode(self::URI_SEPARATOR, $uri);
+        $uri = trim(parse_url($uri, PHP_URL_PATH), Constants::URI_SEPARATOR);
+        $segments = explode(Constants::URI_SEPARATOR, $uri);
 
         if (isset($segments[0]) && $segments[0] && $this->isModule($segments[0])) {
             $module = isset($segments[0]) && $segments[0]? $segments[0]: 'def';
@@ -37,36 +32,24 @@ class Router
 			unset($segments[0], $segments[1]);
         }
 
-        $this->module = $this->prepareModule($module);
-		$this->controller = $this->prepareController($module, $controller);
-		$this->action = $this->prepareAction($action);
-		$this->params = $this->prepareParams($segments);
+		$this->routeInfo = new RouteInfo(
+			$this->prepareModule($module),
+			$this->prepareController($module, $controller),
+			$controller,
+			$this->prepareAction($action),
+			$action,
+			$this->prepareParams($segments));
     }
 
-	public function getModule(): string
+	public function getRouteInfo(): RouteInfo
 	{
-		return $this->module;
-	}
-
-    public function getController(): string
-    {
-        return $this->controller;
-    }
-
-    public function getAction(): string
-    {
-        return $this->action;
-    }
-
-	public function getParams(): array
-	{
-		return $this->params;
+		return $this->routeInfo;
 	}
 
     private function isModule($moduleName): bool
 	{
 		$moduleName = $this->prepareModule($moduleName);
-		$dirName = self::CONTROLLER_PATH . self::URI_SEPARATOR . $moduleName;
+		$dirName = Constants::CONTROLLER_PATH . Constants::URI_SEPARATOR . $moduleName;
 		
 		if (is_dir($dirName)) {
 			return true;
@@ -94,9 +77,9 @@ class Router
 			$controller[$key] = ucfirst($value);
 		}
 		
-        $controllerClass  = 'App' . self::CB_SEPARATOR;
-		$controllerClass .= ucfirst(strtolower($module)) . self::CB_SEPARATOR;
-		$controllerClass .= 'Controllers' . self::CB_SEPARATOR;
+        $controllerClass  = 'App' . Constants::CB_SEPARATOR;
+		$controllerClass .= ucfirst(strtolower($module)) . Constants::CB_SEPARATOR;
+		$controllerClass .= 'Controllers' . Constants::CB_SEPARATOR;
 		$controllerClass .= implode('', $controller) . 'Controller';
 		
 		return $controllerClass;
