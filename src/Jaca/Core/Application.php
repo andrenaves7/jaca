@@ -21,7 +21,7 @@ class Application
         $this->loadEnv();
         ErrorHandler::register();
 
-        $request = new HttpRequest($_SERVER);
+        $request = new HttpRequest();
         $router = new Router($_SERVER['REQUEST_URI']);
         $dispatcher = new RouteDispatcher();
 

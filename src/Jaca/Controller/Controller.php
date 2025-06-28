@@ -2,11 +2,12 @@
 
 namespace Jaca\Controller;
 
+use Jaca\Controller\Interfaces\IController;
 use Jaca\Http\HttpRequest;
 use Jaca\Http\RouteInfo;
 use Jaca\View\View;
 
-abstract class Controller
+abstract class Controller implements IController
 {
     protected HttpRequest $request;
 
