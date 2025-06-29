@@ -1,6 +1,8 @@
 <?php
 namespace Jaca\Database\Interfaces;
 
+use Jaca\Model\Interfaces\IModel;
+
 interface ISelect
 {
     public function __toString(): string;
@@ -15,6 +17,6 @@ interface ISelect
     public function joinLeft(string|array $table, string $on, array $columns = []): self;
     public function joinRight(string|array $table, string $on, array $columns = []): self;
     public function getQuery(): string;
-    public function fetch(): ?array;
-    public function fetchAll(): ?array;
+    public function fetch(): array|IModel|null;
+    public function fetchAll(): array|IModel|null;
 }

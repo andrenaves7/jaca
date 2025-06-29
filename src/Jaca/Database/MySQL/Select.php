@@ -4,6 +4,7 @@ namespace Jaca\Database\MySQL;
 use Jaca\Database\Exceptions\DatabaseQueryException;
 use Jaca\Database\Interfaces\IAction;
 use Jaca\Database\Interfaces\ISelect;
+use Jaca\Model\Interfaces\IModel;
 
 class Select implements ISelect
 {
@@ -12,6 +13,7 @@ class Select implements ISelect
     const INNER = 'INNER';
 
     private IAction $action;
+    private ?IModel $model;
     private array $table = [];
     private array $columns = [];
     private array $where = [];
@@ -25,9 +27,12 @@ class Select implements ISelect
     private array $bindings = [];
     private int $paramCounter = 0;
 
-    public function __construct(?IAction $action = null)
+    public function __construct(?IAction $action = null, ?IModel $model = null)
     {
         $this->action = $action ?? new Action();
+        if ($model) {
+            $this->model = $model;
+        }
     }
 
     public function __toString(): string
@@ -108,17 +113,17 @@ class Select implements ISelect
         return $this->sql;
     }
 
-    public function fetch(): ?array
+    public function fetch(): array|IModel|null
     {
         return $this->executePrepared(false);
     }
 
-    public function fetchAll(): ?array
+    public function fetchAll(): array|IModel|null
     {
         return $this->executePrepared(true);
     }
 
-    private function executePrepared(bool $all): ?array
+    private function executePrepared(bool $all): array|IModel|null
     {
         $stmt = $this->action->getConnection()->prepare($this->sql);
         foreach ($this->bindings as $param => $value) {
@@ -126,6 +131,18 @@ class Select implements ISelect
         }
         if (!$stmt->execute()) {
             throw new DatabaseQueryException('Erro ao executar query: ' . implode(', ', $stmt->errorInfo()));
+        }
+        
+        $ref = new \ReflectionProperty($this, 'model');
+        if ($ref->isInitialized($this)) {
+            $className = get_class($this->model);
+
+            if ($all) {
+                return $stmt->fetchAll(\PDO::FETCH_CLASS, $className);
+            } else {
+                $stmt->setFetchMode(\PDO::FETCH_CLASS, $className);
+                return $stmt->fetch();
+            }
         }
         return $all ? $stmt->fetchAll(\PDO::FETCH_ASSOC) : $stmt->fetch(\PDO::FETCH_ASSOC);
     }

@@ -4,6 +4,7 @@ namespace Jaca\Database\MySQL;
 use Jaca\Database\Exceptions\DatabaseQueryException;
 use Jaca\Database\Interfaces\IAction;
 use Jaca\Database\Interfaces\ISelect;
+use Jaca\Model\Interfaces\IModel;
 
 class Action implements IAction
 {
@@ -151,6 +152,25 @@ class Action implements IAction
         return $stmt->execute();
     }
 
+    public function count(string $table, ?array $where = null): int
+    {
+        [$whereSql, $params] = $this->buildWhere($where);
+        $sql = "SELECT COUNT(*) as total FROM {$table} {$whereSql}";
+        
+        $stmt = $this->connection->prepare($sql);
+        
+        foreach ($params as $key => $value) {
+            $stmt->bindValue(":{$key}", $value);
+        }
+
+        if (!$stmt->execute()) {
+            throw new DatabaseQueryException('Erro ao executar count: ' . implode(', ', $stmt->errorInfo()));
+        }
+
+        $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+        return (int) ($result['total'] ?? 0);
+    }
+
     public function quote(string $string): string
 	{
         return $this->connection->quote(trim($string));
@@ -193,9 +213,9 @@ class Action implements IAction
 		$this->connection->rollBack();
 	}
 
-    public function select(): ISelect
+    public function select(?IModel $model = null): ISelect
 	{
-		return new Select($this);
+		return new Select($this, $model);
 	}
 
     private function mountGroupBy(mixed $group): string

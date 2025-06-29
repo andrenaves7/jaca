@@ -3,182 +3,134 @@ namespace Jaca\Model;
 
 use Jaca\Database\ActionFactory;
 use Jaca\Database\Interfaces\IAction;
-use Jaca\Model\Attributes\Column;
-use Jaca\Model\Attributes\Hidden;
-use Jaca\Model\Attributes\PrimaryKey;
-use Jaca\Model\Attributes\Table;
-use Jaca\Model\Validation\Interfaces\IValidator;
+use Jaca\Database\Interfaces\ISelect;
+use Jaca\Model\Interfaces\IModel;
 
-abstract class Model
+abstract class Model extends ModelCore implements IModel
 {
     protected IAction $action;
-    protected string $name;
-    protected string $primary = 'id';
-    private array $errors = [];
 
     public function __construct()
     {
+        parent::__construct();
         $this->action = ActionFactory::create();
-
-        $reflection = new \ReflectionClass($this);
-
-        // Inicializa todas as propriedades públicas com null, se ainda não tiverem sido inicializadas
-        $this->fillAttributes($reflection);
-        $this->setName($reflection);
-        $this->setPrimary($reflection);
     }
 
-    private function fillAttributes(\ReflectionClass $reflection): void
+    public function save(): bool
     {
-        foreach (($reflection)->getProperties(\ReflectionProperty::IS_PUBLIC) as $property) {
-            if (!$property->isInitialized($this)) {
-                $type = $property->getType();
-                if ($type && !$type->isBuiltin()) {
-                    $property->setValue($this, null); // Classes/Objetos → null
-                } elseif ($type && $type instanceof \ReflectionNamedType) {
-                    switch ($type->getName()) {
-                        case 'int':
-                            $property->setValue($this, 0);
-                            break;
-                        case 'float':
-                            $property->setValue($this, 0.0);
-                            break;
-                        case 'string':
-                            $property->setValue($this, '');
-                            break;
-                        case 'bool':
-                            $property->setValue($this, false);
-                            break;
-                        default:
-                            $property->setValue($this, null);
-                            break;
-                    }
-                } else {
-                    $property->setValue($this, null);
-                }
-            }
-        }
-    }
+        $props = $this->extractColumnValues();
+        $pk = $this->getPrimary();
 
-    private function setName(\ReflectionClass $reflection): void
-    {
-        $attributes = $reflection->getAttributes(Table::class);
-
-        if (!empty($attributes)) {
-            $tableAttr = $attributes[0]->newInstance();
-            $this->name = $tableAttr->name;
+        if (isset($this->$pk)) {
+            return $this->action->update($this->getName(), $props, [$pk => $this->$pk]);
         } else {
-            $class = (new \ReflectionClass($this))->getShortName();
-            $this->name = $this->inflectTableName($class);
+            $id = $this->action->insert($this->getName(), $props);
+            $this->$pk = $id;
+            return true;
         }
     }
 
-    private function setPrimary(\ReflectionClass $reflection): void
+    public function delete(): bool
     {
-        foreach ($reflection->getProperties() as $property) {
-            $attrs = $property->getAttributes(PrimaryKey::class);
-            if (!empty($attrs)) {
-                $this->primary = $property->getName();
-                break;
-            }
-        }
+        $pk = $this->getPrimary();
+        return $this->action->delete($this->getName(), [$pk => $this->$pk]);
     }
 
-    private function inflectTableName(string $className): string
+    public static function find(int $id): ?static
     {
-        $snake = strtolower(preg_replace('/(?<!^)[A-Z]/', '_$0', $className));
-        return $snake . 's';
+        $instance = new static();
+        $data = $instance->action->fetchRow($instance->getName(), [$instance->getPrimary() => $id]);
+        return $data ? $instance->mapDataToObject($data) : null;
     }
 
-    public function fetchAll($where = null, $group = null, $order = null, $limit = null, $offset = null)
-	{
-		return $this->action->fetchAll($this->name, $where, $group, $order, $limit, $offset);
-	}
+    public static function findAll(
+        array $where = null,
+        array $order = null,
+        int $limit = null,
+        int $offset = null
+    ): array {
+        $instance = new static();
+        $results = $instance->getAction()->fetchAll(
+            $instance->getName(),
+            $where,
+            null,    // groupBy
+            $order,
+            $limit,
+            $offset
+        );
 
-    public function fetchRow($where = null, $order = null)
-	{
-		return $this->action->fetchRow($this->name, $where, $order);
-	}
-
-    public function insert(array $data)
-	{
-		return $this->action->insert($this->name, $data);
-	}
-
-    public function update(array $data, $where = null)
-	{
-		return $this->action->update($this->name, $data, $where);
-	}
-
-    public function delete($where = null)
-	{
-		return $this->action->delete($this->name, $where);
-	}
-
-    public function getAction()
-	{
-		return $this->action;
-	}
-
-    public function getName(): string
-    {
-        return $this->name;
-    }
-
-    public function getPrimary(): string
-    {
-        return $this->primary;
-    }
-
-    public function getColumns(): array
-    {
-        $columns = [];
-        $reflection = new \ReflectionClass($this);
-
-        foreach ($reflection->getProperties(\ReflectionProperty::IS_PUBLIC) as $property) {
-            // Ignora campos com #[Hidden]
-            if (!empty($property->getAttributes(Hidden::class))) {
-                continue;
-            }
-
-            $columnAttr = $property->getAttributes(Column::class);
-            if (!empty($columnAttr)) {
-                $column = $columnAttr[0]->newInstance();
-                $columns[] = $column->name ?? $property->getName();
-            } else {
-                // Se não tiver #[Column], considera o nome da propriedade
-                $columns[] = $property->getName();
-            }
+        $objects = [];
+        foreach ($results as $data) {
+            $objects[] = $instance->mapDataToObject($data);
         }
 
-        return $columns;
+        return $objects;
     }
 
-    public function isValid(): bool
+    public static function findBy(array $conditions): array
     {
-        $this->errors = [];
-        $reflection = new \ReflectionClass($this);
+        $instance = new static();
+        $rows = $instance->getAction()->fetchAll($instance->getName(), $conditions);
 
-        foreach ($reflection->getProperties(\ReflectionProperty::IS_PUBLIC) as $property) {
-            $value = $this->{$property->getName()};
-            $attributes = $property->getAttributes();
-
-            foreach ($attributes as $attribute) {
-                $instance = $attribute->newInstance();
-                if ($instance instanceof IValidator) {
-                    $error = $instance->validate($property->getName(), $value, $this);
-                    if ($error !== null) {
-                        $this->errors[$property->getName()][] = $error;
-                    }
-                }
-            }
+        $results = [];
+        foreach ($rows as $row) {
+            $results[] = $instance->mapDataToObject($row);
         }
 
-        return empty($this->errors);
+        return $results;
     }
 
-    public function getErrors(): array
+    public static function count(array $where = null): int
     {
-        return $this->errors;
+        $instance = new static();
+        return $instance->getAction()->count($instance->getName(), $where);
+    }
+
+    public static function exists(array $where = null): bool
+    {
+        return static::count($where) > 0;
+    }
+
+    public static function updateMany(array $data, array $where): bool
+    {
+        $instance = new static();
+        return $instance->getAction()->update($instance->getName(), $data, $where);
+    }
+
+    public static function select(): ISelect
+    {
+        $model = new static();
+        return $model->action->select($model)->from($model->getName());
+    }
+
+    public function reload(): bool
+    {
+        $pk = $this->getPrimary();
+        if (!isset($this->$pk)) {
+            return false;
+        }
+
+        $data = $this->getAction()->fetchRow($this->getName(), [$pk => $this->$pk]);
+
+        if (!$data) {
+            return false;
+        }
+
+        $this->mapDataToObject($data);
+        return true;
+    }
+
+    public function toArray(): array
+    {
+        $arr = [];
+        foreach ($this->getColumns() as $col) {
+            $arr[$col] = $this->{$col} ?? null;
+        }
+        return $arr;
+    }
+
+    public function getAction(): IAction
+    {
+        return $this->action;
     }
 }

@@ -1,6 +1,8 @@
 <?php
 namespace Jaca\Database\Interfaces;
 
+use Jaca\Model\Interfaces\IModel;
+
 interface IAction
 {
     public function setReturning($returning);
@@ -10,11 +12,12 @@ interface IAction
     public function insert(string $table, array $data): bool|string;
     public function update(string $table, array $data, mixed $where = ''): bool;
     public function delete(string $table, mixed $where): bool;
+    public function count(string $table, ?array $where = null): int;
     public function quote(string $string): string;
     public function querySQL(string $sql, bool $all = true): mixed;
     public function executeSQL(string $sql): bool;
 	public function beginTransaction(): void;
 	public function commit(): void;
 	public function rollBack(): void;
-	public function select(): ISelect;
+	public function select(?IModel $model = null): ISelect;
 }
