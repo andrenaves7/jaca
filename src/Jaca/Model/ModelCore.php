@@ -7,9 +7,8 @@ use Jaca\Model\Attributes\PrimaryKey;
 use Jaca\Model\Attributes\Table;
 use Jaca\Model\Validation\Interfaces\IValidator;
 
-abstract class ModelCore
+abstract class ModelCore implements \JsonSerializable
 {
-    // Cache estático da reflexão da classe para otimização
     private static array $reflectionCache = [];
 
     protected string $name;
@@ -25,7 +24,6 @@ abstract class ModelCore
         $this->setPrimary($reflection);
     }
 
-    // Retorna ReflectionClass da instância, cacheado por classe
     protected function getReflection(): \ReflectionClass
     {
         $class = static::class;
@@ -37,32 +35,9 @@ abstract class ModelCore
 
     protected function fillAttributes(\ReflectionClass $reflection): void
     {
-        foreach ($reflection->getProperties(\ReflectionProperty::IS_PUBLIC) as $property) {
+        foreach ($this->getPublicProperties(false) as $property) {
             if (!$property->isInitialized($this)) {
-                $type = $property->getType();
-                if ($type && !$type->isBuiltin()) {
-                    $property->setValue($this, null); // Classes/Objetos → null
-                } elseif ($type && $type instanceof \ReflectionNamedType) {
-                    switch ($type->getName()) {
-                        case 'int':
-                            $property->setValue($this, 0);
-                            break;
-                        case 'float':
-                            $property->setValue($this, 0.0);
-                            break;
-                        case 'string':
-                            $property->setValue($this, '');
-                            break;
-                        case 'bool':
-                            $property->setValue($this, false);
-                            break;
-                        default:
-                            $property->setValue($this, null);
-                            break;
-                    }
-                } else {
-                    $property->setValue($this, null);
-                }
+                $property->setValue($this, null);
             }
         }
     }
@@ -97,7 +72,7 @@ abstract class ModelCore
         return $snake . 's';
     }
 
-    protected function extractColumnValues(): array
+    protected function extractColumnValues(bool $isNew): array
     {
         $reflection = $this->getReflection();
         $data = [];
@@ -106,10 +81,25 @@ abstract class ModelCore
             $columnAttr = $property->getAttributes(Column::class)[0] ?? null;
             if (!$columnAttr) continue;
 
-            $column = $columnAttr->newInstance()->name ?? $property->getName();
-            $value = $this->{$property->getName()};
+            $column = $columnAttr->newInstance();
+            $columnName = $column->name ?? $property->getName();
+            $value = $this->{$property->getName()} ?? null;
 
-            $data[$column] = $value;
+            if ($isNew) {
+                if (($value === null || $value === '') && $column->default !== null) {
+                    if ($column->default === 'now()' && strtolower($column->type) === 'datetime') {
+                        $value = (new \DateTime())->format('Y-m-d H:i:s');
+                    } else {
+                        $value = $column->default;
+                    }
+                }
+            } else {
+                if ($value === null) {
+                    continue;
+                }
+            }
+
+            $data[$columnName] = $value;
         }
 
         return $data;
@@ -120,10 +110,21 @@ abstract class ModelCore
         $reflection = $this->getReflection();
 
         foreach ($reflection->getProperties() as $property) {
+            // Tenta obter atributo Column
             $columnAttr = $property->getAttributes(Column::class)[0] ?? null;
-            if (!$columnAttr) continue;
 
-            $columnName = $columnAttr->newInstance()->name ?? $property->getName();
+            // Se não tiver Column, tenta ver se é a primary key (com PrimaryKey)
+            if (!$columnAttr) {
+                $primaryKeyAttr = $property->getAttributes(PrimaryKey::class);
+                if (!empty($primaryKeyAttr)) {
+                    // Criar uma instância "falsa" para obter nome da propriedade como nome da coluna
+                    $columnName = $property->getName();
+                } else {
+                    continue; // pula propriedade que não tem nem Column nem PrimaryKey
+                }
+            } else {
+                $columnName = $columnAttr->newInstance()->name ?? $property->getName();
+            }
 
             if (array_key_exists($columnName, $data)) {
                 $value = $data[$columnName];
@@ -180,17 +181,11 @@ abstract class ModelCore
     public function getColumns(): array
     {
         $columns = [];
-        $reflection = $this->getReflection();
 
-        foreach ($reflection->getProperties(\ReflectionProperty::IS_PUBLIC) as $property) {
-            if (!empty($property->getAttributes(Hidden::class))) {
-                continue;
-            }
-
-            $columnAttr = $property->getAttributes(Column::class);
-            if (!empty($columnAttr)) {
-                $column = $columnAttr[0]->newInstance();
-                $columns[] = $column->name ?? $property->getName();
+        foreach ($this->getPublicProperties() as $property) {
+            $attr = $property->getAttributes(Column::class)[0] ?? null;
+            if ($attr) {
+                $columns[] = $attr->newInstance()->name ?? $property->getName();
             } else {
                 $columns[] = $property->getName();
             }
@@ -199,12 +194,37 @@ abstract class ModelCore
         return $columns;
     }
 
+    public function toArray(): array
+    {
+        $array = [];
+
+        foreach ($this->getPublicProperties() as $property) {
+            $name = $property->getName();
+            $value = $this->$name;
+            $array[$name] = $this->formatValue($value);
+        }
+
+        return $array;
+    }
+
+    protected function formatValue(mixed $value): mixed
+    {
+        if ($value instanceof \DateTime) {
+            return $value->format('Y-m-d H:i:s');
+        }
+
+        if (is_object($value)) {
+            return method_exists($value, '__toString') ? (string)$value : get_class($value);
+        }
+
+        return $value;
+    }
+
     public function isValid(): bool
     {
         $this->errors = [];
-        $reflection = $this->getReflection();
 
-        foreach ($reflection->getProperties(\ReflectionProperty::IS_PUBLIC) as $property) {
+        foreach ($this->getPublicProperties(false) as $property) {
             $value = $this->{$property->getName()};
             $attributes = $property->getAttributes();
 
@@ -225,5 +245,30 @@ abstract class ModelCore
     public function getErrors(): array
     {
         return $this->errors;
+    }
+
+    public function __debugInfo(): array
+    {
+        return $this->toArray();
+    }
+
+    private function getPublicProperties(bool $excludeHidden = true): array
+    {
+        $reflection = $this->getReflection();
+        $properties = [];
+
+        foreach ($reflection->getProperties(\ReflectionProperty::IS_PUBLIC) as $property) {
+            if ($excludeHidden && !empty($property->getAttributes(Hidden::class))) {
+                continue;
+            }
+            $properties[] = $property;
+        }
+
+        return $properties;
+    }
+
+    public function jsonSerialize(): array
+    {
+        return $this->toArray();
     }
 }

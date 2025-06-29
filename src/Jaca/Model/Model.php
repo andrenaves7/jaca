@@ -18,21 +18,26 @@ abstract class Model extends ModelCore implements IModel
 
     public function save(): bool
     {
-        $props = $this->extractColumnValues();
         $pk = $this->getPrimary();
+        $pkValue = $this->$pk;
 
-        if (isset($this->$pk)) {
-            return $this->action->update($this->getName(), $props, [$pk => $this->$pk]);
-        } else {
+        $isNew = ($pkValue === null || $pkValue === 0);
+
+        // Passa o flag para saber se é insert ou update
+        $props = $this->extractColumnValues($isNew);
+
+        if ($isNew) {
             $id = $this->action->insert($this->getName(), $props);
             $this->$pk = $id;
             return true;
+        } else {
+            return $this->action->update($this->getName(), $props, [$pk => $pkValue]);
         }
     }
 
     public function delete(): bool
     {
-        $pk = $this->getPrimary();
+        $pk = $this->getPrimary();print_r([$pk => $this->$pk]);
         return $this->action->delete($this->getName(), [$pk => $this->$pk]);
     }
 
@@ -118,15 +123,6 @@ abstract class Model extends ModelCore implements IModel
 
         $this->mapDataToObject($data);
         return true;
-    }
-
-    public function toArray(): array
-    {
-        $arr = [];
-        foreach ($this->getColumns() as $col) {
-            $arr[$col] = $this->{$col} ?? null;
-        }
-        return $arr;
     }
 
     public function getAction(): IAction
