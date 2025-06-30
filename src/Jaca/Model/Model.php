@@ -41,7 +41,7 @@ abstract class Model extends ModelCore implements IModel
         return $this->action->delete($this->getName(), [$pk => $this->$pk]);
     }
 
-    public static function find(int $id): ?static
+    public static function find(int|string $id): ?static
     {
         $instance = new static();
         $data = $instance->action->fetchRow($instance->getName(), [$instance->getPrimary() => $id]);
