@@ -67,8 +67,6 @@ abstract class Model extends ModelCore implements IModel
     public function delete(): bool
     {
         $pk = $this->getPrimary();
-        // Debug print; consider removing or changing to proper logging
-        print_r([$pk => $this->$pk]);
 
         return $this->action->delete($this->getName(), [$pk => $this->$pk]);
     }
@@ -175,9 +173,9 @@ abstract class Model extends ModelCore implements IModel
     }
 
     /**
-     * Returns a query builder select instance for this model.
+     * Creates and returns a select query builder for the model's table.
      * 
-     * @return ISelect Query builder instance.
+     * @return ISelect Query builder instance for fluent querying.
      */
     public static function select(): ISelect
     {
@@ -284,10 +282,8 @@ abstract class Model extends ModelCore implements IModel
 
         $attributes = [];
 
-        // Coleta todos os atributos HasOne da classe
         $attributes = array_merge($attributes, $ref->getAttributes(HasOne::class));
 
-        // Coleta todos os atributos HasOne das propriedades
         foreach ($ref->getProperties() as $prop) {
             $attributes = array_merge($attributes, $prop->getAttributes(HasOne::class));
         }
