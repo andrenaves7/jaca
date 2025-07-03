@@ -234,11 +234,13 @@ abstract class Model extends ModelCore implements IModel
                 $meta = $attr->newInstance();
 
                 if ($meta->related === $modelName) {
-                    // Determine foreign key property name in camelCase
                     $foreignKey = $meta->foreignKey ?? $prop->getName();
                     $foreignKey = Str::camelCase($foreignKey);
-                    $ownerKey = $meta->ownerKey ?? 'id';
                     $relatedClass = $meta->related;
+                    $instance = new $relatedClass();
+
+                    // Use ownerKey if set, else fallback to primary key of related class
+                    $ownerKey = $meta->ownerKey ?? $instance->getPrimary();
 
                     $foreignValue = $this->$foreignKey ?? null;
 
@@ -246,7 +248,10 @@ abstract class Model extends ModelCore implements IModel
                         return null;
                     }
 
-                    return $relatedClass::find($foreignValue);
+                    // Build query to fetch related record by ownerKey = foreignValue
+                    return $relatedClass::select()
+                        ->where("$ownerKey = ?", $foreignValue)
+                        ->fetch();
                 }
             }
         }
