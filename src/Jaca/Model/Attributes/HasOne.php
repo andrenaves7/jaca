@@ -6,7 +6,7 @@ class HasOne
 {
     public function __construct(
         public string $related,
-        public string $foreignKey = '',
-        public string $localKey = 'id'
+        public ?string $foreignKey = '',
+        public ?string $localKey = ''
     ) {}
 }

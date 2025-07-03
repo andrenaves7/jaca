@@ -6,7 +6,7 @@ class BelongsTo
 {
     public function __construct(
         public string $related,
-        public string $foreignKey = 'id',
-        public string $ownerKey = ''
+        public ?string $foreignKey = '',
+        public ?string $ownerKey = ''
     ) {}
 }

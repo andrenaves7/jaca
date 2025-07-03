@@ -5,6 +5,7 @@ use Jaca\Database\ActionFactory;
 use Jaca\Database\Interfaces\IAction;
 use Jaca\Database\Interfaces\ISelect;
 use Jaca\Model\Attributes\BelongsTo;
+use Jaca\Model\Attributes\HasMany;
 use Jaca\Model\Attributes\HasOne;
 use Jaca\Model\Interfaces\IModel;
 use Jaca\Support\Str;
@@ -233,15 +234,16 @@ abstract class Model extends ModelCore implements IModel
                 $meta = $attr->newInstance();
 
                 if ($meta->related === $modelName) {
-                    $foreignKey = $meta->foreignKey ?? $prop->getName();
-                    $foreignKey = Str::camelCase($foreignKey);
                     $relatedClass = $meta->related;
                     $instance = new $relatedClass();
 
-                    // Use ownerKey if set, else fallback to primary key of related class
-                    $ownerKey = $meta->ownerKey ?? $instance->getPrimary();
+                    $foreignKey = ($meta->foreignKey !== null && $meta->foreignKey !== '') 
+                        ? $meta->foreignKey : Str::snakeCase($this->getPrimary());
 
-                    $foreignValue = $this->$foreignKey ?? null;
+                    $ownerKey = ($meta->ownerKey !== null && $meta->ownerKey !== '')
+                        ? $meta->ownerKey : $this->getPrimary();
+
+                    $foreignValue = $this->{Str::camelCase($foreignKey)} ?? null;
 
                     if ($foreignValue === null) {
                         return null;
@@ -276,17 +278,10 @@ abstract class Model extends ModelCore implements IModel
      */
     public function hasOne(string $modelName): ?IModel
     {
-        $ref = new \ReflectionClass($this);
         $relatedClass = null;
         $foreignKey = null;
 
-        $attributes = [];
-
-        $attributes = array_merge($attributes, $ref->getAttributes(HasOne::class));
-
-        foreach ($ref->getProperties() as $prop) {
-            $attributes = array_merge($attributes, $prop->getAttributes(HasOne::class));
-        }
+        $attributes = $this->collectRelationAttributes(HasOne::class);
 
         foreach ($attributes as $attr) {
             $meta = $attr->newInstance();
@@ -295,20 +290,85 @@ abstract class Model extends ModelCore implements IModel
                 $relatedClass = $meta->related;
                 $instance = new $relatedClass();
 
-                $foreignKey = $meta->foreignKey ?? Str::snakeCase($this->getPrimary());
-                $ownerKey = $meta->ownerKey ?? $this->getPrimary();
+                $foreignKey = ($meta->foreignKey !== null && $meta->foreignKey !== '') 
+                    ? $meta->foreignKey : ModelRelationHelper::defaultForeignKey($relatedClass);
 
-                $ownerValue = $this->{$ownerKey} ?? null;
+                $localKey = ($meta->localKey !== null && $meta->localKey !== '')
+                    ? $meta->localKey : Str::snakeCase($instance->getPrimary());
 
-                if ($ownerValue === null) {
+                $foreignKeyValue = $this->{Str::camelCase($foreignKey)} ?? null;
+
+                if ($foreignKeyValue === null) {
                     return null;
                 }
 
-                $data = $instance->getAction()->fetchRow($instance->getName(), [$foreignKey => $ownerValue]);
+                $data = $instance->getAction()->fetchRow($instance->getName(), [$localKey => $foreignKeyValue]);
                 return $data ? $instance->mapDataToObject($data) : null;
             }
         }
 
         throw new \Exception("No property or class with #[HasOne] for {$modelName} was found.");
+    }
+
+    /**
+     * Retrieves a collection of related models in a one-to-many (hasMany) relationship.
+     *
+     * This method searches for properties or class-level attributes marked with #[HasMany]
+     * that match the given related model name. It then queries all related records where
+     * the foreign key in the related model matches this model's primary key value.
+     *
+     * @param string $modelName The fully qualified class name of the related model.
+     * @return IModel[] Array of related model instances.
+     * @throws \Exception If no #[HasMany] attribute is found for the given model.
+     */
+    public function hasMany(string $modelName): array
+    {
+        $attributes = $this->collectRelationAttributes(HasMany::class);
+
+        foreach ($attributes as $attr) {
+            $meta = $attr->newInstance();
+
+            if ($meta->related === $modelName) {
+                $relatedClass = $meta->related;
+                $instance = new $relatedClass();
+
+                $foreignKey = ($meta->foreignKey !== null && $meta->foreignKey !== '') 
+                    ? $meta->foreignKey : ModelRelationHelper::defaultForeignKey(static::class);
+                    
+                $localKey = ($meta->localKey !== null && $meta->localKey !== '')
+                    ? $meta->localKey : Str::snakeCase($instance->getPrimary());
+
+                $foreignKeyValue = $this->{Str::camelCase($localKey)} ?? null;
+
+                if ($foreignKeyValue === null) {
+                    return [];
+                }
+
+                $rows = $instance->getAction()->fetchAll($instance->getName(), [
+                    $foreignKey => $foreignKeyValue
+                ]);
+
+                $results = [];
+                foreach ($rows as $row) {
+                    $results[] = $instance->mapDataToObject($row);
+                }
+
+                return $results;
+            }
+        }
+
+        throw new \Exception("No property or class with #[HasMany] for {$modelName} was found.");
+    }
+
+    protected function collectRelationAttributes(string $attributeClass): array
+    {
+        $ref = new \ReflectionClass($this);
+        $attributes = $ref->getAttributes($attributeClass);
+
+        foreach ($ref->getProperties() as $prop) {
+            $attributes = array_merge($attributes, $prop->getAttributes($attributeClass));
+        }
+
+        return $attributes;
     }
 }
