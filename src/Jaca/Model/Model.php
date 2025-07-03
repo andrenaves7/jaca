@@ -5,6 +5,7 @@ use Jaca\Database\ActionFactory;
 use Jaca\Database\Interfaces\IAction;
 use Jaca\Database\Interfaces\ISelect;
 use Jaca\Model\Attributes\BelongsTo;
+use Jaca\Model\Attributes\HasOne;
 use Jaca\Model\Interfaces\IModel;
 use Jaca\Support\Str;
 
@@ -249,13 +250,69 @@ abstract class Model extends ModelCore implements IModel
                     }
 
                     // Build query to fetch related record by ownerKey = foreignValue
-                    return $relatedClass::select()
-                        ->where("$ownerKey = ?", $foreignValue)
-                        ->fetch();
+                    $data = $instance->getAction()->fetchRow($instance->getName(), [$ownerKey => $foreignValue]);
+                    return $data ? $instance->mapDataToObject($data) : null;
                 }
             }
         }
 
         throw new \Exception("No property with #[BelongsTo] for {$modelName} was found.");
+    }
+
+    /**
+     * Retrieves the related model in a one-to-one (hasOne) relationship.
+     *
+     * This method looks for a property in the current model annotated with #[HasOne]
+     * that references the given model name. It then constructs and executes a query
+     * to fetch the related model instance where the foreign key in the related model
+     * matches the primary key value of the current model.
+     *
+     * The foreign key and owner key can be customized via the #[HasOne] attribute.
+     * If not provided, defaults are used: the foreign key defaults to the snake_case
+     * version of this model's primary key, and the owner key defaults to the primary
+     * key of the related model.
+     *
+     * @param string $modelName The fully qualified class name of the related model.
+     * @return IModel|null The related model instance if found, or null otherwise.
+     * @throws \Exception If no property with #[HasOne] for the specified model is found.
+     */
+    public function hasOne(string $modelName): ?IModel
+    {
+        $ref = new \ReflectionClass($this);
+        $relatedClass = null;
+        $foreignKey = null;
+
+        $attributes = [];
+
+        // Coleta todos os atributos HasOne da classe
+        $attributes = array_merge($attributes, $ref->getAttributes(HasOne::class));
+
+        // Coleta todos os atributos HasOne das propriedades
+        foreach ($ref->getProperties() as $prop) {
+            $attributes = array_merge($attributes, $prop->getAttributes(HasOne::class));
+        }
+
+        foreach ($attributes as $attr) {
+            $meta = $attr->newInstance();
+
+            if ($meta->related === $modelName) {
+                $relatedClass = $meta->related;
+                $instance = new $relatedClass();
+
+                $foreignKey = $meta->foreignKey ?? Str::snakeCase($this->getPrimary());
+                $ownerKey = $meta->ownerKey ?? $this->getPrimary();
+
+                $ownerValue = $this->{$ownerKey} ?? null;
+
+                if ($ownerValue === null) {
+                    return null;
+                }
+
+                $data = $instance->getAction()->fetchRow($instance->getName(), [$foreignKey => $ownerValue]);
+                return $data ? $instance->mapDataToObject($data) : null;
+            }
+        }
+
+        throw new \Exception("No property or class with #[HasOne] for {$modelName} was found.");
     }
 }
