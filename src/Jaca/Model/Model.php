@@ -360,6 +360,17 @@ abstract class Model extends ModelCore implements IModel
         throw new \Exception("No property or class with #[HasMany] for {$modelName} was found.");
     }
 
+    /**
+     * Collects all attributes of a given relation type (e.g., HasOne, HasMany, BelongsTo)
+     * from both the class and its properties using PHP's Reflection API.
+     *
+     * This method allows for uniform retrieval of relation metadata defined
+     * via attributes at both the class level and the property level.
+     *
+     * @param string $attributeClass The fully qualified class name of the relation attribute to collect.
+     *                               Must be a subclass of Attribute (e.g., HasOne::class).
+     * @return array An array of ReflectionAttribute instances matching the given attribute class.
+     */
     protected function collectRelationAttributes(string $attributeClass): array
     {
         $ref = new \ReflectionClass($this);
