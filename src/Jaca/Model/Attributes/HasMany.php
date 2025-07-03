@@ -7,6 +7,6 @@ class HasMany
     public function __construct(
         public string $related,
         public string $foreignKey,
-        public ?string $localKey = null
+        public ?string $localKey = 'id'
     ) {}
 }
