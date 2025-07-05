@@ -6,7 +6,7 @@ use Jaca\Model\Interfaces\IModel;
 interface IAction
 {
     public function setReturning($returning);
-    public function getConnection();
+    public function getConnection(): \PDO;
     public function fetchAll(string $table, mixed $where = null, mixed $group = null, mixed $order = null, int $limit = null, int $offset = null): array;
     public function fetchRow(string $table, mixed $where, mixed $order = null): array|null;
     public function insert(string $table, array $data): bool|string;

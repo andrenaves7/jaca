@@ -24,7 +24,7 @@ class Unique implements IValidator
             throw new ModelRequiredException('Model instance required for Unique validation.');
         }
 
-        $table = $this->table ?? $model->getName();
+        $table = $this->table ?? $model->getTableName();
         $field = $this->field ?? $this->getField($model, $property);
 
         // Monta consulta usando o método getAction

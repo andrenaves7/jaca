@@ -27,7 +27,7 @@ abstract class ModelCore implements \JsonSerializable
      * Table name associated with the model.
      * @var string
      */
-    protected string $name;
+    protected string $tableName;
 
     /**
      * Name of the primary key property.
@@ -50,7 +50,7 @@ abstract class ModelCore implements \JsonSerializable
         $reflection = $this->getReflection();
 
         $this->fillAttributes($reflection);
-        $this->setName($reflection);
+        $this->setTableName($reflection);
         $this->setPrimary($reflection);
     }
 
@@ -88,16 +88,16 @@ abstract class ModelCore implements \JsonSerializable
      *
      * @param \ReflectionClass $reflection Reflection of the current class.
      */
-    protected function setName(\ReflectionClass $reflection): void
+    protected function setTableName(\ReflectionClass $reflection): void
     {
         $attributes = $reflection->getAttributes(Table::class);
 
         if (!empty($attributes)) {
             $tableAttr = $attributes[0]->newInstance();
-            $this->name = $tableAttr->name;
+            $this->tableName = $tableAttr->name;
         } else {
             $class = $reflection->getShortName();
-            $this->name = $this->inflectTableName($class);
+            $this->tableName = $this->inflectTableName($class);
         }
     }
 
@@ -147,7 +147,7 @@ abstract class ModelCore implements \JsonSerializable
             if (!$columnAttr) continue;
 
             $column = $columnAttr->newInstance();
-            $columnName = $column->name ?? strtolower(Str::snakeCase($property->getName()));
+            $columnName = $column->tableName ?? strtolower(Str::snakeCase($property->getName()));
             $value = $this->{$property->getName()} ?? null;
 
             if ($isNew) {
@@ -199,7 +199,7 @@ abstract class ModelCore implements \JsonSerializable
                     continue;
                 }
             } else {
-                $columnName = $columnAttr->newInstance()->name ?? Str::snakeCase($property->getName());
+                $columnName = $columnAttr->newInstance()->tableName ?? Str::snakeCase($property->getName());
             }
 
             if (array_key_exists($columnName, $data)) {
@@ -249,9 +249,9 @@ abstract class ModelCore implements \JsonSerializable
      *
      * @return string The table name.
      */
-    public function getName(): string
+    public function getTableName(): string
     {
-        return $this->name;
+        return $this->tableName;
     }
 
     /**
@@ -276,7 +276,7 @@ abstract class ModelCore implements \JsonSerializable
         foreach ($this->getPublicProperties() as $property) {
             $attr = $property->getAttributes(Column::class)[0] ?? null;
             if ($attr) {
-                $columns[] = $attr->newInstance()->name ?? Str::snakeCase($property->getName());
+                $columns[] = $attr->newInstance()->tableName ?? Str::snakeCase($property->getName());
             } else {
                 $columns[] = Str::snakeCase($property->getName());
             }

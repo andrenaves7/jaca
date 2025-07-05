@@ -5,6 +5,7 @@ use Jaca\Database\ActionFactory;
 use Jaca\Database\Interfaces\IAction;
 use Jaca\Database\Interfaces\ISelect;
 use Jaca\Model\Attributes\BelongsTo;
+use Jaca\Model\Attributes\HasAndBelongsToMany;
 use Jaca\Model\Attributes\HasMany;
 use Jaca\Model\Attributes\HasOne;
 use Jaca\Model\Interfaces\IModel;
@@ -52,11 +53,11 @@ abstract class Model extends ModelCore implements IModel
         $props = $this->extractColumnValues($isNew);
 
         if ($isNew) {
-            $id = $this->action->insert($this->getName(), $props);
+            $id = $this->action->insert($this->getTableName(), $props);
             $this->$pk = $id;
             return true;
         } else {
-            return $this->action->update($this->getName(), $props, [$pk => $pkValue]);
+            return $this->action->update($this->getTableName(), $props, [$pk => $pkValue]);
         }
     }
 
@@ -69,7 +70,7 @@ abstract class Model extends ModelCore implements IModel
     {
         $pk = $this->getPrimary();
 
-        return $this->action->delete($this->getName(), [$pk => $this->$pk]);
+        return $this->action->delete($this->getTableName(), [$pk => $this->$pk]);
     }
 
     /**
@@ -81,7 +82,7 @@ abstract class Model extends ModelCore implements IModel
     public static function find(int|string $id): ?static
     {
         $instance = new static();
-        $data = $instance->action->fetchRow($instance->getName(), [$instance->getPrimary() => $id]);
+        $data = $instance->action->fetchRow($instance->getTableName(), [$instance->getPrimary() => $id]);
         return $data ? $instance->mapDataToObject($data) : null;
     }
 
@@ -102,7 +103,7 @@ abstract class Model extends ModelCore implements IModel
     ): array {
         $instance = new static();
         $results = $instance->getAction()->fetchAll(
-            $instance->getName(),
+            $instance->getTableName(),
             $where,
             null,    // groupBy (not used here)
             $order,
@@ -127,7 +128,7 @@ abstract class Model extends ModelCore implements IModel
     public static function findBy(array $conditions): array
     {
         $instance = new static();
-        $rows = $instance->getAction()->fetchAll($instance->getName(), $conditions);
+        $rows = $instance->getAction()->fetchAll($instance->getTableName(), $conditions);
 
         $results = [];
         foreach ($rows as $row) {
@@ -146,7 +147,7 @@ abstract class Model extends ModelCore implements IModel
     public static function count(array $where = null): int
     {
         $instance = new static();
-        return $instance->getAction()->count($instance->getName(), $where);
+        return $instance->getAction()->count($instance->getTableName(), $where);
     }
 
     /**
@@ -170,7 +171,7 @@ abstract class Model extends ModelCore implements IModel
     public static function updateMany(array $data, array $where): bool
     {
         $instance = new static();
-        return $instance->getAction()->update($instance->getName(), $data, $where);
+        return $instance->getAction()->update($instance->getTableName(), $data, $where);
     }
 
     /**
@@ -181,7 +182,7 @@ abstract class Model extends ModelCore implements IModel
     public static function select(): ISelect
     {
         $model = new static();
-        return $model->action->select($model)->from($model->getName());
+        return $model->action->select($model)->from($model->getTableName());
     }
 
     /**
@@ -196,7 +197,7 @@ abstract class Model extends ModelCore implements IModel
             return false;
         }
 
-        $data = $this->getAction()->fetchRow($this->getName(), [$pk => $this->$pk]);
+        $data = $this->getAction()->fetchRow($this->getTableName(), [$pk => $this->$pk]);
 
         if (!$data) {
             return false;
@@ -250,7 +251,7 @@ abstract class Model extends ModelCore implements IModel
                     }
 
                     // Build query to fetch related record by ownerKey = foreignValue
-                    $data = $instance->getAction()->fetchRow($instance->getName(), [$ownerKey => $foreignValue]);
+                    $data = $instance->getAction()->fetchRow($instance->getTableName(), [$ownerKey => $foreignValue]);
                     return $data ? $instance->mapDataToObject($data) : null;
                 }
             }
@@ -302,7 +303,7 @@ abstract class Model extends ModelCore implements IModel
                     return null;
                 }
 
-                $data = $instance->getAction()->fetchRow($instance->getName(), [$localKey => $foreignKeyValue]);
+                $data = $instance->getAction()->fetchRow($instance->getTableName(), [$localKey => $foreignKeyValue]);
                 return $data ? $instance->mapDataToObject($data) : null;
             }
         }
@@ -344,7 +345,7 @@ abstract class Model extends ModelCore implements IModel
                     return [];
                 }
 
-                $rows = $instance->getAction()->fetchAll($instance->getName(), [
+                $rows = $instance->getAction()->fetchAll($instance->getTableName(), [
                     $foreignKey => $foreignKeyValue
                 ]);
 
@@ -358,6 +359,73 @@ abstract class Model extends ModelCore implements IModel
         }
 
         throw new \Exception("No property or class with #[HasMany] for {$modelName} was found.");
+    }
+
+    /**
+     * Retrieves related records in a "has and belongs to many" (many-to-many) relationship.
+     *
+     * This method fetches related model instances associated with this model
+     * through a pivot table. It uses the #[HasAndBelongsToMany] attribute metadata
+     * to determine the pivot table and foreign keys.
+     *
+     * @param string $modelName Fully qualified class name of the related model.
+     *
+     * @return array An array of instances of the related model.
+     *
+     * @throws \Exception If no #[HasAndBelongsToMany] attribute matching $modelName is found.
+     */
+    public function hasAndBelongsToMany(string $modelName): array
+    {
+        $attributes = $this->collectRelationAttributes(HasAndBelongsToMany::class);
+
+        $refA = new \ReflectionClass($this);
+        $refB = new \ReflectionClass(new $modelName);
+
+        foreach ($attributes as $attr) {
+            $meta = $attr->newInstance();
+
+            if ($meta->related === $modelName) {
+                $relatedClass = $meta->related;
+                $instance = new $relatedClass();
+
+                $pivot = ($meta->pivot !== null && $meta->pivot !== '')
+                    ? $meta->pivot : Str::snakeCase($refA->getShortName() . $refB->getShortName());
+
+                $foreignPivotKey = ($meta->foreignPivotKey !== null && $meta->foreignPivotKey !== '')
+                    ? $meta->foreignPivotKey : Str::snakeCase($refA->getShortName() . '_' . $this->getPrimary());
+
+                $relatedPivotKey = ($meta->relatedPivotKey !== null && $meta->relatedPivotKey !== '')
+                    ? $meta->relatedPivotKey : Str::snakeCase($refB->getShortName() . '_' . $instance->getPrimary());
+
+                if ($pivot === null || $foreignPivotKey === null || $relatedPivotKey === null) {
+                    return [];
+                }
+
+                $primaryKeyValue = $this->{$this->getPrimary()};
+
+                $sql = $this->action->select()
+                    ->from(['b' => $instance->getTableName()], [])
+                    ->join(['p' => $pivot], "p.{$relatedPivotKey} = b.{$instance->getPrimary()}")
+                    ->where("p.{$foreignPivotKey} = :primaryKeyValue")->getQuery();
+
+                $stmt = $this->action->getConnection()->prepare($sql);
+                $stmt->bindValue(':primaryKeyValue', $primaryKeyValue);
+
+                $stmt->execute();
+
+                $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+                $results = [];
+                foreach ($rows as $row) {
+                    $obj = new $modelName();
+                    $results[] = $obj->mapDataToObject($row);
+                }
+
+                return $results;
+            }
+        }
+
+        return [];
     }
 
     /**
