@@ -518,10 +518,54 @@ abstract class Model extends ModelCore implements IModel
         throw new \Exception("No #[HasAndBelongsToMany] relation found for {$modelName}.");
     }
 
-    // Remove a associação
+    /**
+     * Detaches one or more related models from the current model via a pivot table.
+     *
+     * This method removes records from the pivot table in a many-to-many relationship,
+     * breaking the association between the current model and the given related model(s).
+     *
+     * @param string $modelName Fully qualified class name of the related model.
+     * @param int|string|array $relatedId One or more primary key values of the related model(s).
+     *
+     * @return bool True if deletion succeeded.
+     *
+     * @throws \Exception If the parent model's primary key is not set or if no matching relationship is found.
+     */
     public function detach(string $modelName, int|string|array $relatedId): bool
     {
-        return true;
+        $attributes = $this->collectRelationAttributes(HasAndBelongsToMany::class);
+        $refA = new \ReflectionClass($this);
+        $refB = new \ReflectionClass(new $modelName);
+
+        foreach ($attributes as $attr) {
+            $meta = $attr->newInstance();
+
+            if ($meta->related === $modelName) {
+                $related = new $modelName();
+
+                $pivot = $meta->pivot ?: Str::snakeCase($refA->getShortName() . $refB->getShortName());
+                $foreignPivotKey = $meta->foreignPivotKey ?: Str::snakeCase($refA->getShortName() . '_' . $this->getPrimary());
+                $relatedPivotKey = $meta->relatedPivotKey ?: Str::snakeCase($refB->getShortName() . '_' . $related->getPrimary());
+
+                $foreignValue = $this->{$this->getPrimary()};
+                $relatedIds = is_array($relatedId) ? $relatedId : [$relatedId];
+
+                if ($foreignValue === null) {
+                    throw new \Exception("Primary key of parent model must be set before detaching.");
+                }
+
+                foreach ($relatedIds as $id) {
+                    $this->action->delete($pivot, [
+                        $foreignPivotKey => $foreignValue,
+                        $relatedPivotKey => $id,
+                    ]);
+                }
+
+                return true;
+            }
+        }
+
+        throw new \Exception("No #[HasAndBelongsToMany] relation found for {$modelName}.");
     }
 
     // Substitui todas as roles do usuário
