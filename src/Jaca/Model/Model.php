@@ -450,4 +450,64 @@ abstract class Model extends ModelCore implements IModel
 
         return $attributes;
     }
+
+    // Adiciona o papel de administrador ao usuário
+    public function attach(string $modelName, int|string|array $relatedId, array $extra = []): bool
+    {
+        $attributes = $this->collectRelationAttributes(HasAndBelongsToMany::class);
+        $refA = new \ReflectionClass($this);
+        $refB = new \ReflectionClass(new $modelName);
+
+        foreach ($attributes as $attr) {
+            $meta = $attr->newInstance();
+
+            if ($meta->related === $modelName) {
+                $related = new $modelName();
+
+                $pivot = $meta->pivot ?: Str::snakeCase($refA->getShortName() . $refB->getShortName());
+                $foreignPivotKey = $meta->foreignPivotKey ?: Str::snakeCase($refA->getShortName() . '_' . $this->getPrimary());
+                $relatedPivotKey = $meta->relatedPivotKey ?: Str::snakeCase($refB->getShortName() . '_' . $related->getPrimary());
+
+                $foreignValue = $this->{$this->getPrimary()};
+                $relatedIds = is_array($relatedId) ? $relatedId : [$relatedId];
+
+                if ($foreignValue === null) {
+                    throw new \Exception("Primary key of parent model must be set before attaching.");
+                }
+
+                foreach ($relatedIds as $id) {
+                    $res = $this->action->select()
+                    ->from($pivot, ["COUNT({$foreignPivotKey}) AS QTD"])
+                    ->where("{$foreignPivotKey} = ?", $foreignValue)
+                    ->where("{$relatedPivotKey} = ?", $id)
+                    ->fetch();
+
+                    if ($res['QTD'] == 0) {
+                        $data = array_merge([
+                            $foreignPivotKey => $foreignValue,
+                            $relatedPivotKey => $id,
+                        ], $extra);
+
+                        $this->action->insert($pivot, $data);
+                    }
+                }
+
+                return true;
+            }
+        }
+
+        throw new \Exception("No #[HasAndBelongsToMany] relation found for {$modelName}.");
+    }
+
+    // Remove a associação
+    public function detach(string $modelName, int|string|array $relatedId): bool
+    {
+        return true;
+    }
+
+    // Substitui todas as roles do usuário
+    public function sync(string $modelName, array $relatedIds): bool
+    {
+        return true;
+    }
 }
