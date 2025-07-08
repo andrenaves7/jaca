@@ -635,4 +635,56 @@ abstract class Model extends ModelCore implements IModel
 
         throw new \Exception("No #[HasAndBelongsToMany] relation found for {$modelName}.");
     }
+
+    /**
+     * Handles dynamic access to related models based on relationship attributes.
+     *
+     * This method allows calling relationship methods like $user->roles() or $post->author()
+     * without explicitly defining them. It detects which relationship (BelongsTo, HasOne,
+     * HasMany, HasAndBelongsToMany) matches the requested name, based on the metadata
+     * defined in attributes like #[BelongsTo], #[HasMany], etc.
+     *
+     * The method resolves the called name (e.g. 'user') to a related model class
+     * and dispatches the appropriate relationship loader method.
+     *
+     * Example usage:
+     * $role = Role::find(1);
+     * $user = $role->user(); // Automatically resolves #[BelongsTo(User::class)]
+     *
+     * @param string $name The called method name (e.g. 'user', 'roles').
+     * @param array $args Arguments passed to the method (not used).
+     *
+     * @return mixed The related model(s) returned by the resolved relationship method.
+     *
+     * @throws \Exception If no matching relationship is found for the given method name.
+     */
+    public function __call(string $name, array $args)
+    {
+        $studlyName = Str::studly($name);
+
+        $relations = [
+            BelongsTo::class => 'getOwner',
+            HasOne::class => 'hasOne',
+            HasMany::class => 'hasMany',
+            HasAndBelongsToMany::class => 'hasAndBelongsToMany',
+        ];
+
+        foreach ($relations as $attributeClass => $methodName) {
+            $attributes = $this->collectRelationAttributes($attributeClass);
+
+            foreach ($attributes as $attr) {
+                $meta = $attr->newInstance();
+                $related = $meta->related;
+
+                $ref = new \ReflectionClass($related);
+                $relatedShortName = $ref->getShortName();
+
+                if (Str::studly($relatedShortName) === $studlyName) {
+                    return $this->$methodName($related);
+                }
+            }
+        }
+
+        throw new \Exception("No relationship found for '{$name}' in " . static::class);
+    }
 }
