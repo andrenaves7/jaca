@@ -451,7 +451,26 @@ abstract class Model extends ModelCore implements IModel
         return $attributes;
     }
 
-    // Adiciona o papel de administrador ao usuário
+    /**
+     * Attaches one or more related models to the current model via a pivot table.
+     *
+     * This method handles many-to-many relationships defined using the #[HasAndBelongsToMany] attribute.
+     * It inserts records into the pivot table, avoiding duplicates by checking for existing entries.
+     * Additional columns can be added to the pivot table via the $extra parameter.
+     *
+     * Example usage:
+     * $user->attach(Role::class, 3); // attaches role with ID 3
+     * $user->attach(Role::class, [1, 2]); // attaches multiple roles
+     * $user->attach(Role::class, 5, ['created_at' => date('Y-m-d')]); // with extra pivot data
+     *
+     * @param string $modelName  Fully qualified class name of the related model.
+     * @param int|string|array $relatedId  One or more primary key values of the related model(s).
+     * @param array $extra  Optional associative array of additional columns to store in the pivot table.
+     *
+     * @return bool True on success.
+     *
+     * @throws \Exception If the parent model's primary key is not set or no matching relationship is found.
+     */
     public function attach(string $modelName, int|string|array $relatedId, array $extra = []): bool
     {
         $attributes = $this->collectRelationAttributes(HasAndBelongsToMany::class);
