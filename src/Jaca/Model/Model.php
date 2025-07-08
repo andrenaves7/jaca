@@ -568,9 +568,71 @@ abstract class Model extends ModelCore implements IModel
         throw new \Exception("No #[HasAndBelongsToMany] relation found for {$modelName}.");
     }
 
-    // Substitui todas as roles do usuário
-    public function sync(string $modelName, array $relatedIds): bool
+    /**
+     * Synchronizes the related models of a many-to-many relationship.
+     *
+     * This method replaces the current pivot table associations with the given set of related IDs.
+     * It will detach all associations not in the provided list and attach any new ones.
+     *
+     * @param string $modelName Fully qualified class name of the related model.
+     * @param array $relatedIds Array of related model primary key values to synchronize.
+     * @param array $extra Optional extra columns to insert with each new pivot record.
+     *
+     * @return bool True on success.
+     *
+     * @throws \Exception If the parent model's primary key is not set or if no matching relationship is found.
+     */
+    public function sync(string $modelName, array $relatedIds, array $extra = []): bool
     {
-        return true;
+        $attributes = $this->collectRelationAttributes(HasAndBelongsToMany::class);
+        $refA = new \ReflectionClass($this);
+        $refB = new \ReflectionClass(new $modelName);
+
+        foreach ($attributes as $attr) {
+            $meta = $attr->newInstance();
+
+            if ($meta->related === $modelName) {
+                $related = new $modelName();
+
+                $pivot = $meta->pivot ?: Str::snakeCase($refA->getShortName() . $refB->getShortName());
+                $foreignPivotKey = $meta->foreignPivotKey ?: Str::snakeCase($refA->getShortName() . '_' . $this->getPrimary());
+                $relatedPivotKey = $meta->relatedPivotKey ?: Str::snakeCase($refB->getShortName() . '_' . $related->getPrimary());
+
+                $foreignValue = $this->{$this->getPrimary()};
+                if ($foreignValue === null) {
+                    throw new \Exception("Primary key of parent model must be set before syncing.");
+                }
+
+                $rows = $this->action->select()
+                    ->from($pivot, [$relatedPivotKey])
+                    ->where("{$foreignPivotKey} = ?", $foreignValue)
+                    ->fetchAll();
+
+                $existingIds = array_column($rows, $relatedPivotKey);
+
+                $toDetach = array_diff($existingIds, $relatedIds);
+                $toAttach = array_diff($relatedIds, $existingIds);
+
+                foreach ($toDetach as $id) {
+                    $this->action->delete($pivot, [
+                        $foreignPivotKey => $foreignValue,
+                        $relatedPivotKey => $id,
+                    ]);
+                }
+
+                foreach ($toAttach as $id) {
+                    $data = array_merge([
+                        $foreignPivotKey => $foreignValue,
+                        $relatedPivotKey => $id,
+                    ], $extra);
+
+                    $this->action->insert($pivot, $data);
+                }
+
+                return true;
+            }
+        }
+
+        throw new \Exception("No #[HasAndBelongsToMany] relation found for {$modelName}.");
     }
 }
