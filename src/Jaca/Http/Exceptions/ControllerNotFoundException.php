@@ -4,8 +4,8 @@ namespace Jaca\Http\Exceptions;
 
 class ControllerNotFoundException extends \Exception
 {
-    public function __construct(string $controller)
+    public function __construct(string $message)
     {
-        parent::__construct("Controller '$controller' not found.", 404);
+        parent::__construct($message);
     }
 }

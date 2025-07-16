@@ -7,6 +7,7 @@ use Jaca\Config\Constants;
 use Jaca\Http\HttpRequest;
 use Jaca\Http\RouteInfo;
 use Jaca\View\Exceptions\TemplateNotFoundException;
+use Jaca\View\Helper\Form\Form;
 
 class View
 {
@@ -15,11 +16,14 @@ class View
     private array $params;
     private HttpRequest $request;
     private RouteInfo $routeInfo;
+	public Form $form;
 
     public function __construct(HttpRequest $request, RouteInfo $routeInfo)
     {
         $this->request = $request;
         $this->routeInfo = $routeInfo;
+
+		$this->form = new Form();
     }
 
     public function setParam($key, $val): void
