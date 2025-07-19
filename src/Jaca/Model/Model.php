@@ -5,9 +5,11 @@ use Jaca\Database\ActionFactory;
 use Jaca\Database\Interfaces\IAction;
 use Jaca\Database\Interfaces\ISelect;
 use Jaca\Model\Attributes\BelongsTo;
+use Jaca\Model\Attributes\Column;
 use Jaca\Model\Attributes\HasAndBelongsToMany;
 use Jaca\Model\Attributes\HasMany;
 use Jaca\Model\Attributes\HasOne;
+use Jaca\Model\Attributes\ReadOnlyAttr;
 use Jaca\Model\Interfaces\IModel;
 use Jaca\Support\Str;
 
@@ -42,6 +44,50 @@ abstract class Model extends ModelCore implements IModel
     }
 
     /**
+     * Creates a new instance of the model and fills it with the given data.
+     *
+     * @param array $data Associative array of property values to fill the model.
+     * @return static Returns the newly created and filled model instance.
+     */
+    public static function fromArray(array $data): static
+    {
+        $instance = new static();
+        $instance->fill($data);
+        return $instance;
+    }
+
+    /**
+     * Fills the model's properties from an associative array of data.
+     *
+     * This method uses reflection to iterate over the model's properties and assigns values
+     * from the provided data array only if the property:
+     *  - Has the #[Column] attribute,
+     *  - Is not marked with #[Hidden],
+     *  - Is not marked with #[ReadOnlyAttr],
+     *  - Is not marked with #[PrimaryKey].
+     *
+     * @param array $data Associative array mapping property names to values.
+     * @return void
+     */
+    public function fill(array $data): void
+    {
+        $reflection = $this->getReflection();
+
+        // Filtra o array, removendo as chaves das propriedades ReadOnly
+        foreach ($reflection->getProperties() as $property) {
+            if (!empty($property->getAttributes(ReadOnlyAttr::class))) {
+                $columnAttr = $property->getAttributes(Column::class)[0] ?? null;
+                $columnName = $columnAttr?->newInstance()->tableName ?? Str::snakeCase($property->getName());
+                if (isset($data[$columnName])) {
+                    unset($data[$columnName]);
+                }
+            }
+        }
+
+        $this->mapDataToObject($data);
+    }
+
+    /**
      * Saves the current model instance.
      * 
      * Performs an insert if the primary key is null, otherwise performs an update.
@@ -50,20 +96,24 @@ abstract class Model extends ModelCore implements IModel
      */
     public function save(): bool
     {
-        $pk = $this->getPrimary();
-        $pkValue = $this->$pk;
+        if ($this->isValid()) {
+            $pk = $this->getPrimary();
+            $pkValue = $this->$pk;
 
-        $isNew = ($pkValue === null);
+            $isNew = ($pkValue === null);
 
-        // Extract column data for insert/update
-        $props = $this->extractColumnValues($isNew);
+            // Extract column data for insert/update
+            $props = $this->extractColumnValues($isNew);
 
-        if ($isNew) {
-            $id = $this->action->insert($this->getTableName(), $props);
-            $this->$pk = $id;
-            return true;
+            if ($isNew) {
+                $id = $this->action->insert($this->getTableName(), $props);
+                $this->$pk = $id;
+                return true;
+            } else {
+                return $this->action->update($this->getTableName(), $props, [$pk => $pkValue]);
+            }
         } else {
-            return $this->action->update($this->getTableName(), $props, [$pk => $pkValue]);
+            return false;
         }
     }
 

@@ -2,6 +2,7 @@
 namespace Jaca\View\Helper;
 
 use Jaca\Config\Config;
+use Jaca\Data\Data;
 use Jaca\View\Helper\Exceptions\HelperNotFoundException;
 
 /**
@@ -20,6 +21,13 @@ use Jaca\View\Helper\Exceptions\HelperNotFoundException;
 class ActionHelper
 {
     /**
+     * The data values
+     * 
+     * @var Data
+     */
+    protected Data $data;
+
+    /**
      * The helper group name (used to resolve internal helpers).
      *
      * Example: if $helper is "Form", the internal class searched will be
@@ -32,8 +40,10 @@ class ActionHelper
     /**
      * Constructor. Calls the init() method.
      */
-    public function __construct()
+    public function __construct(Data $data)
     {
+        $this->data = $data;
+
         $this->init();
     }
 
@@ -75,7 +85,7 @@ class ActionHelper
         foreach ($candidates as $className) {
             if (class_exists($className)) {
                 try {
-                    $instance = new $className();
+                    $instance = new $className($this->data);
                     break;
                 } catch (\Throwable $e) {
                     // Optionally log or handle the constructor failure here

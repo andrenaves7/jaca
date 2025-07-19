@@ -300,8 +300,12 @@ abstract class ModelCore implements \JsonSerializable
 
         foreach ($this->getPublicProperties() as $property) {
             $name = $property->getName();
+
+            $columnAttr = $property->getAttributes(Column::class)[0] ?? null;
+            $key = $columnAttr ? $columnAttr->newInstance()->name ?? Str::snakeCase($name) : Str::snakeCase($name);
+
             $value = $this->$name;
-            $array[$name] = $this->formatValue($value);
+            $array[$key] = $this->formatValue($value);
         }
 
         return $array;

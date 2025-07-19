@@ -22,22 +22,22 @@ class HttpRequest
         $this->headers = $this->fetchHeaders();
     }
 
-    public function get(string $key, $default = null)
+    public function get(?string $key = null, $default = null): mixed
     {
-        return $this->get[$key] ?? $default;
+        return $key === null ? $this->get : ($this->get[$key] ?? $default);
     }
 
-    public function post(string $key, $default = null)
+    public function post(?string $key = null, $default = null): mixed
     {
-        return $this->post[$key] ?? $default;
+        return $key === null ? $this->post : ($this->post[$key] ?? $default);
     }
 
-    public function file(string $key)
+    public function file(string $key): mixed
     {
         return $this->files[$key] ?? null;
     }
 
-    public function cookie(string $key, $default = null)
+    public function cookie(string $key, $default = null): mixed
     {
         return $this->cookie[$key] ?? $default;
     }
@@ -119,5 +119,20 @@ class HttpRequest
         // Case-insensitive search for header
         $name = str_replace(' ', '-', ucwords(strtolower(str_replace('-', ' ', $name))));
         return $this->headers[$name] ?? null;
+    }
+
+    public function isPost(): bool
+    {
+        return $this->method() === 'POST';
+    }
+
+    public function isGet(): bool
+    {
+        return $this->method() === 'GET';
+    }
+
+    public function getPost(): array
+    {
+        return $this->post;
     }
 }

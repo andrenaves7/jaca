@@ -4,8 +4,8 @@ namespace Jaca\View;
 
 use Jaca\Config\Config;
 use Jaca\Config\Constants;
+use Jaca\Data\Data;
 use Jaca\Http\HttpRequest;
-use Jaca\Http\RouteInfo;
 use Jaca\View\Exceptions\TemplateNotFoundException;
 use Jaca\View\Helper\Form\Form;
 
@@ -15,15 +15,15 @@ class View
     private bool $renderLayout = true;
     private array $params;
     private HttpRequest $request;
-    private RouteInfo $routeInfo;
+    private Data $data;
 	public Form $form;
 
-    public function __construct(HttpRequest $request, RouteInfo $routeInfo)
+    public function __construct(HttpRequest $request, Data $data)
     {
         $this->request = $request;
-        $this->routeInfo = $routeInfo;
+        $this->data = $data;
 
-		$this->form = new Form();
+		$this->form = new Form($this->data);
     }
 
     public function setParam($key, $val): void
@@ -67,9 +67,9 @@ class View
 	        //header('Content-type:application/json;charset=utf-8');
 	    } else {
     		if ($this->renderView || $return) {
-    			$moduleName = $this->routeInfo->module;
-    			$controllerName = $this->routeInfo->controllerName;
-    			$actionName = $this->routeInfo->actionName;
+    			$moduleName = $this->data->routeInfo->module;
+    			$controllerName = $this->data->routeInfo->controllerName;
+    			$actionName = $this->data->routeInfo->actionName;
     			if (!$url) {
     				$fileName = '../' . Constants::APP_PATH . Constants::URI_SEPARATOR . $moduleName . 
                         Constants::URI_SEPARATOR . 'views' . 
@@ -100,7 +100,7 @@ class View
 			$layoutFile = Config::get('view', 'default_layout');
 
             if (!$layoutFile) {
-                $layoutFile = '../' . Constants::APP_PATH . Constants::URI_SEPARATOR . $this->routeInfo->module .
+                $layoutFile = '../' . Constants::APP_PATH . Constants::URI_SEPARATOR . $this->data->routeInfo->module .
                     Constants::URI_SEPARATOR . 'views' . Constants::URI_SEPARATOR . 'layouts' . 
                     Constants::URI_SEPARATOR . Constants::LAYOUT_FILE;
             }
@@ -120,7 +120,7 @@ class View
 	{
 		$layoutFile = Config::get('view', 'default_layout');
 		if (!$layoutFile) {
-            $layoutFile = '../' . Constants::APP_PATH . Constants::URI_SEPARATOR . $this->routeInfo->module .
+            $layoutFile = '../' . Constants::APP_PATH . Constants::URI_SEPARATOR . $this->data->routeInfo->module .
                 Constants::URI_SEPARATOR . 'views' . Constants::URI_SEPARATOR . 'layouts' . 
                 Constants::URI_SEPARATOR . $file;
         } else {
