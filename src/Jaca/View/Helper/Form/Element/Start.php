@@ -1,13 +1,16 @@
 <?php
 namespace Jaca\View\Helper\Form\Element;
 
-use Jaca\View\Helper\Helper;
+use Jaca\Model\Interfaces\IModel;
+use Jaca\View\Helper\Form\FormHelper;
 use Jaca\View\Helper\Interfaces\IHelper;
 
-class Start extends Helper implements IHelper
+class Start extends FormHelper implements IHelper
 {
-    public function start($id, $action = null, $method = 'post', array $options = array()): string
+    public function start(string $id, ?IModel $model = null, ?string $action = null, string $method = 'post', array $options = []): string
     {
+		FormHelper::setModel($model);
+		
         $attr = $this->getAttr($options);
 		
 		if (is_array($action)) {

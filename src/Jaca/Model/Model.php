@@ -324,4 +324,28 @@ abstract class Model extends ModelCore implements IModel
         $instance = new static();
         return $instance->getAction()->update($instance->getTableName(), $data, $where);
     }
+
+    /**
+     * Returns validation errors collected during the last isValid() check.
+     *
+     * @return array<string, string[]> Array mapping property names to error messages.
+     */
+    public function getErrors(): array
+    {
+        return parent::getErrors();
+    }
+
+    /**
+     * Converts the current object into an associative array.
+     *
+     * Only public properties are included in the resulting array.
+     * Each property's value is passed through `formatValue()` to ensure consistent formatting,
+     * such as converting DateTime objects to strings.
+     *
+     * @return array An associative array representing the object's public properties.
+     */
+    public function toArray(): array
+    {
+        return parent::toArray();
+    }
 }

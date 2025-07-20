@@ -101,4 +101,22 @@ interface IModel
      * @return bool True on success, false otherwise.
      */
     public static function updateMany(array $data, array $where): bool;
+
+    /**
+     * Returns validation errors collected during the last isValid() check.
+     *
+     * @return array<string, string[]> Array mapping property names to error messages.
+     */
+    public function getErrors(): array;
+
+    /**
+     * Converts the current object into an associative array.
+     *
+     * Only public properties are included in the resulting array.
+     * Each property's value is passed through `formatValue()` to ensure consistent formatting,
+     * such as converting DateTime objects to strings.
+     *
+     * @return array An associative array representing the object's public properties.
+     */
+    public function toArray(): array;
 }

@@ -33,7 +33,7 @@ class View
 
 	public function getParam($key): mixed
 	{
-		if (isset($this->params[$key])) {
+		if (array_key_exists($key, $this->params)) {
 			return $this->params[$key];
 		}
 		return '';
