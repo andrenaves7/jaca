@@ -5,26 +5,23 @@ use Jaca\View\Helper\Form\FormHelper;
 use Jaca\View\Helper\Interfaces\IHelper;
 
 /**
- * Classe responsável por renderizar o elemento HTML <textarea> em formulários.
- * 
- * Utiliza metadados e valores dinâmicos para gerar os atributos necessários,
- * incluindo validações, preenchimento automático e exibição de erros.
+ * Helper para renderizar um campo <textarea> em formulários.
+ * Usa metadados para configurar atributos e preencher valores.
  */
 class TextArea extends FormHelper implements IHelper
 {
     /**
-     * Gera um campo <textarea> com atributos e valores dinâmicos.
+     * Gera o HTML de um campo <textarea>.
      *
-     * @param string $id O ID e o name do campo textarea.
-     * @param array $options Atributos HTML adicionais (ex: ['class' => 'form-control']).
-     * @param mixed|null $value Valor padrão para preenchimento (pode ser sobrescrito por valores submetidos).
-     * @return string HTML renderizado do campo <textarea>.
+     * @param string $id Identificador e nome do campo.
+     * @param array $options Atributos adicionais para o textarea (ex: class, rows).
+     * @param mixed|null $value Valor inicial do campo (pode ser sobrescrito por valores submetidos).
+     * @return string HTML do textarea renderizado.
      */
     public function textArea(string $id, array $options = [], $value = null): string
     {
         $metadata = $this->getInputMetadata($id);
 
-        // Aplica metadados ao array de opções
         if ($metadata) {
             if ($metadata->maxlength !== null) {
                 $options['maxlength'] = $metadata->maxlength;
@@ -33,24 +30,26 @@ class TextArea extends FormHelper implements IHelper
             if ($metadata->required) {
                 $options['required'] = true;
             }
+
+            // Suporte a atributos extras comuns para textarea
+            foreach (['rows', 'cols', 'placeholder', 'class', 'style'] as $attr) {
+                if (isset($metadata->$attr)) {
+                    $options[$attr] = $metadata->$attr;
+                }
+            }
         }
 
-        // Define o valor do campo (prioridade: argumento > metadata > valor submetido)
-        if ($value === null) {
+        // Define valor inicial considerando prioridade: argumento > metadata > valores submetidos
+        if ($value === null || $value === '') {
             $value = $metadata?->value ?? $this->getValuesById($id);
         }
 
-        // Escapa o valor para segurança contra XSS
-        $value = htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
+        $attr = $this->getAttr($options);
+        $valueEsc = htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
+        $idEsc = htmlspecialchars($id, ENT_QUOTES, 'UTF-8');
 
-        // Revalida o valor se ainda estiver vazio
-        if (strlen(trim($value)) === 0) {
-            $value = htmlspecialchars((string)$this->getValuesById($id), ENT_QUOTES, 'UTF-8');
-        }
-
-        $attr  = $this->getAttr($options);
         $erros = $this->getErrorsListById($id);
 
-        return "<textarea id=\"{$id}\" name=\"{$id}\"{$attr}>{$value}</textarea>{$erros}";
+        return "<textarea id=\"{$idEsc}\" name=\"{$idEsc}\"{$attr}>{$valueEsc}</textarea>{$erros}";
     }
 }

@@ -5,35 +5,34 @@ use Jaca\View\Helper\Form\FormHelper;
 use Jaca\View\Helper\Interfaces\IHelper;
 
 /**
- * Generates a reset button for HTML forms.
- *
- * This helper builds a <input type="reset"> element with customizable
- * attributes and value.
+ * Helper para renderizar um botão de reset em formulários.
  *
  * @package Jaca\View\Helper\Form\Element
  */
 class Reset extends FormHelper implements IHelper
 {
     /**
-     * Renders a reset button element.
+     * Gera o HTML para um botão <input type="reset">.
      *
-     * @param string $id The element's ID and name attribute.
-     * @param string|null $value The label/text to appear on the button.
-     * @param array $options Additional HTML attributes (e.g., class, style).
-     * @return string The rendered HTML reset input element.
+     * @param string $id Identificador do botão reset.
+     * @param string|null $value Texto exibido no botão (default: 'Reset').
+     * @param array $options Atributos HTML adicionais para o botão.
+     * @return string HTML do botão reset.
      */
-    public function reset(string $id, string $value = null, array $options = []): string
+    public function reset(string $id, ?string $value = null, array $options = []): string
     {
+        $value = $value ?? 'Reset';
+
         $attributes = '';
-        foreach ($options as $key => $opt) {
-            $escapedKey = htmlspecialchars($key, ENT_QUOTES, 'UTF-8');
-            $escapedVal = htmlspecialchars($opt, ENT_QUOTES, 'UTF-8');
-            $attributes .= " {$escapedKey}=\"{$escapedVal}\"";
+        foreach ($options as $attr => $val) {
+            $attrEsc = htmlspecialchars($attr, ENT_QUOTES, 'UTF-8');
+            $valEsc = htmlspecialchars($val, ENT_QUOTES, 'UTF-8');
+            $attributes .= " {$attrEsc}=\"{$valEsc}\"";
         }
 
-        $escapedId = htmlspecialchars($id, ENT_QUOTES, 'UTF-8');
-        $escapedValue = htmlspecialchars($value ?? 'Reset', ENT_QUOTES, 'UTF-8');
+        $idEsc = htmlspecialchars($id, ENT_QUOTES, 'UTF-8');
+        $valueEsc = htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
 
-        return "<input type=\"reset\" id=\"{$escapedId}\" name=\"{$escapedId}\" value=\"{$escapedValue}\"{$attributes} />";
+        return "<input type=\"reset\" id=\"{$idEsc}\" value=\"{$valueEsc}\"{$attributes} />";
     }
 }

@@ -1,64 +1,54 @@
 <?php
-
 namespace Jaca\View\Helper\Form\Element;
 
-use Jaca\Model\Interfaces\IModel;
-use Jaca\Support\Str;
-use Jaca\View\Helper\Exceptions\ViewHelperMissingParameterException;
 use Jaca\View\Helper\Form\FormHelper;
 use Jaca\View\Helper\Interfaces\IHelper;
+use Jaca\Support\Str;
+use Jaca\View\Helper\Exceptions\ViewHelperMissingParameterException;
 
 /**
- * Class Start
- *
- * This class is responsible for generating the opening <form> tag in a view.
- * It supports model-based form generation and can auto-generate the form ID
- * based on the model class name if one is not provided explicitly.
- *
- * Implements IHelper interface to be used as a view helper.
- *
- * Example usage in a view:
- *     <?= (new Start())->start($model, null, '/submit', 'post', ['class' => 'form-horizontal']) ?>
+ * Helper para iniciar um formulário HTML (<form>).
  *
  * @package Jaca\View\Helper\Form\Element
  */
 class Start extends FormHelper implements IHelper
 {
     /**
-     * Generates the opening <form> tag with the appropriate attributes.
+     * Gera a tag <form> de abertura com atributos configurados.
      *
-     * @param IModel|null $model   Optional model to bind to the form. Used to auto-generate form ID if not set.
-     * @param string|null $id      Optional ID for the form element. If omitted and a model is provided, a default ID is generated.
-     * @param string|array|null $action The form action URL. Can be a string or an array of path segments.
-     * @param string $method       HTTP method to use in the form (e.g., 'post', 'get').
-     * @param array $options       Optional additional HTML attributes as key-value pairs.
-     *
-     * @return string              The generated opening <form> tag.
-     *
-     * @throws ViewHelperMissingParameterException if no ID is provided and none can be generated.
+     * @param \Jaca\Model\Interfaces\IModel|null $model Model para associação dos dados (opcional).
+     * @param string|null $id ID do formulário (se não informado, gerado a partir do model).
+     * @param string|null $action URL para envio do formulário.
+     * @param string $method Método HTTP do formulário (default 'post').
+     * @param array $options Atributos HTML adicionais para a tag form.
+     * @throws ViewHelperMissingParameterException Se o ID não for informado nem inferido.
+     * @return string Tag <form> completa de abertura.
      */
-    public function start(?IModel $model = null, ?string $id = null, string|array|null $action = null, string $method = 'post', array $options = []): string
+    public function start(?\Jaca\Model\Interfaces\IModel $model = null, ?string $id = null, ?string $action = null, string $method = 'post', array $options = []): string
     {
-        self::setModel($model);
+        FormHelper::setModel($model);
 
-        // Auto-generate form ID based on the model class name if not explicitly provided
+        // Se model existe e id não foi fornecido, gera id baseado na classe do model
         if ($model && !$id) {
-            $id = str_replace('\\', '_', Str::snakeCase($model::class));
+            $id = str_replace('\\', '_', Str::snakeCase(get_class($model)));
         }
 
-        // If still no ID, throw an exception to ensure form ID uniqueness and correctness
         if (!$id) {
             throw new ViewHelperMissingParameterException('id');
         }
 
-        // Generate additional attributes for the form tag
-        $attr = $this->getAttr($options);
-
-        // If the action is an array, convert it to a path string
+        // Trata o atributo action: se for array, monta string url
         if (is_array($action)) {
             $action = count($action) > 0 ? implode('/', $action) : '';
         }
 
-        return "<form id=\"{$id}\" action=\"{$action}\" method=\"{$method}\"{$attr} >";
+        // Escapa valores para segurança
+        $idEsc = htmlspecialchars($id, ENT_QUOTES, 'UTF-8');
+        $actionEsc = htmlspecialchars($action ?? '', ENT_QUOTES, 'UTF-8');
+        $methodEsc = htmlspecialchars($method, ENT_QUOTES, 'UTF-8');
+
+        $attr = $this->getAttr($options);
+
+        return "<form id=\"{$idEsc}\" action=\"{$actionEsc}\" method=\"{$methodEsc}\"{$attr}>";
     }
 }
