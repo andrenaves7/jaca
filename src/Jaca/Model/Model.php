@@ -169,7 +169,8 @@ abstract class Model extends ModelCore implements IModel
 
         $objects = [];
         foreach ($results as $data) {
-            $objects[] = $instance->mapDataToObject($data);
+            $obj = new static();
+            $objects[] = $obj->mapDataToObject($data);
         }
 
         return $objects;
@@ -188,7 +189,8 @@ abstract class Model extends ModelCore implements IModel
 
         $results = [];
         foreach ($rows as $row) {
-            $results[] = $instance->mapDataToObject($row);
+            $obj = new static();
+            $results[] = $obj->mapDataToObject($row);
         }
 
         return $results;

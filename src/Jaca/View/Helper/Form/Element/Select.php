@@ -1,6 +1,10 @@
 <?php
 namespace Jaca\View\Helper\Form\Element;
 
+use App\Def\Models\User;
+use Jaca\Model\Attributes\HasOne;
+use Jaca\Model\ModelRelationHelper;
+use Jaca\Support\Str;
 use Jaca\View\Helper\Form\FormHelper;
 use Jaca\View\Helper\Interfaces\IHelper;
 
@@ -23,6 +27,24 @@ class Select extends FormHelper implements IHelper
     public function select(string $id, array $values = [], array $options = [], $selected = null): string
     {
         $metadata = $this->getInputMetadata($id);
+
+        if (empty($values)) {
+            $relation = ModelRelationHelper::getRelationMeta(FormHelper::getModel(), HasOne::class, User::class);
+
+            if ($relation) {
+                $instance = new $relation->related();
+                $localKey = ($relation->localKey !== null && $relation->localKey !== '')
+                        ? $relation->localKey : Str::snakeCase($instance->getPrimary());
+                $localLabel = ModelRelationHelper::getLabelField($relation->related);
+
+                $relationValues = $relation->related::findAll();
+
+                $values = ['' => ''];
+                foreach ($relationValues as $v) {
+                    $values[$v->$localKey] = $v->$localLabel;
+                }
+            }
+        }
 
         if ($metadata && $metadata->required) {
             $options['required'] = true;

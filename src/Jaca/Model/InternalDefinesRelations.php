@@ -4,6 +4,7 @@ namespace Jaca\Model;
 use Jaca\Model\Attributes\BelongsTo;
 use Jaca\Model\Attributes\HasAndBelongsToMany;
 use Jaca\Model\Attributes\HasMany;
+use Jaca\Model\Attributes\HasOne;
 use Jaca\Model\Interfaces\IModel;
 use Jaca\Support\Str;
 
