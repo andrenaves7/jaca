@@ -103,7 +103,7 @@ class View
 			$layoutFile = Config::get('view', 'default_layout');
 
             if (!$layoutFile) {
-                $layoutFile = '../' . Constants::APP_PATH . Constants::URI_SEPARATOR . $this->data->routeInfo->module .
+                $layoutFile = APP_PATH . Constants::URI_SEPARATOR . $this->data->routeInfo->module .
                     Constants::URI_SEPARATOR . 'views' . Constants::URI_SEPARATOR . 'layouts' . 
                     Constants::URI_SEPARATOR . Constants::LAYOUT_FILE;
             }
@@ -123,7 +123,7 @@ class View
 	{
 		$layoutFile = Config::get('view', 'default_layout');
 		if (!$layoutFile) {
-            $layoutFile = '../' . Constants::APP_PATH . Constants::URI_SEPARATOR . $this->data->routeInfo->module .
+            $layoutFile = APP_PATH . Constants::URI_SEPARATOR . $this->data->routeInfo->module .
                 Constants::URI_SEPARATOR . 'views' . Constants::URI_SEPARATOR . 'layouts' . 
                 Constants::URI_SEPARATOR . $file;
         } else {

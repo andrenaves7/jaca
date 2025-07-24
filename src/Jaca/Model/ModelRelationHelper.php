@@ -26,7 +26,21 @@ class ModelRelationHelper
         return Str::snakeCase($className) . '_id';
     }
 
-    public static function getRelationMeta(object $model, string $relationAttributeClass, string $relatedClass): ?object
+    /**
+     * Recupera a metadata de uma relação (atributo) de um modelo dado.
+     *
+     * Esse método busca no modelo informado uma propriedade que possua o atributo
+     * de relacionamento especificado (ex: HasOne, BelongsTo, etc) e opcionalmente filtra
+     * pelo nome da propriedade ou pela classe relacionada.
+     *
+     * @param object $model Instância do modelo onde buscar a relação.
+     * @param string $relationAttributeClass Nome completo da classe do atributo de relação (ex: HasOne::class).
+     * @param string|null $propertyOrRelatedClass Nome da propriedade do modelo ou nome da classe relacionada
+     *                                            para filtrar o atributo desejado. Se nulo, retorna o primeiro encontrado.
+     * 
+     * @return object|null Instância da metadata do atributo de relacionamento encontrado, ou null se não achar.
+     */
+    public static function getRelationMeta(object $model, string $relationAttributeClass, ?string $propertyOrRelatedClass = null): ?object
     {
         $ref = new \ReflectionClass($model);
 
@@ -34,7 +48,15 @@ class ModelRelationHelper
             foreach ($property->getAttributes($relationAttributeClass) as $attr) {
                 $instance = $attr->newInstance();
 
-                if (property_exists($instance, 'related') && $instance->related === $relatedClass) {
+                if ($propertyOrRelatedClass !== null) {
+                    if ($propertyOrRelatedClass === $property->getName()) {
+                        return $instance;
+                    }
+
+                    if (property_exists($instance, 'related') && $instance->related === $propertyOrRelatedClass) {
+                        return $instance;
+                    }
+                } else {
                     return $instance;
                 }
             }

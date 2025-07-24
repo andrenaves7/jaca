@@ -1,7 +1,6 @@
 <?php
 namespace Jaca\View\Helper\Form\Element;
 
-use App\Def\Models\User;
 use Jaca\Model\Attributes\HasOne;
 use Jaca\Model\ModelRelationHelper;
 use Jaca\Support\Str;
@@ -29,7 +28,7 @@ class Select extends FormHelper implements IHelper
         $metadata = $this->getInputMetadata($id);
 
         if (empty($values)) {
-            $relation = ModelRelationHelper::getRelationMeta(FormHelper::getModel(), HasOne::class, User::class);
+            $relation = ModelRelationHelper::getRelationMeta(FormHelper::getModel(), HasOne::class);
 
             if ($relation) {
                 $instance = new $relation->related();
