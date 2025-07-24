@@ -8,6 +8,7 @@ use Jaca\Data\Data;
 use Jaca\Http\HttpRequest;
 use Jaca\View\Exceptions\TemplateNotFoundException;
 use Jaca\View\Helper\Form\Form;
+use Jaca\View\Helper\Tag\Tag;
 
 class View
 {
@@ -17,6 +18,7 @@ class View
     private HttpRequest $request;
     private Data $data;
 	public Form $form;
+	public Tag $tag;
 
     public function __construct(HttpRequest $request, Data $data)
     {
@@ -24,6 +26,7 @@ class View
         $this->data = $data;
 
 		$this->form = new Form($this->data);
+		$this->tag = new Tag($this->data);
     }
 
     public function setParam($key, $val): void
