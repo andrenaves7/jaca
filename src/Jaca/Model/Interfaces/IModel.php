@@ -121,12 +121,12 @@ interface IModel
     public function toArray(): array;
 
     /**
-     * Extrai uma coluna de valores ou um array associativo (tipo id => name).
+     * Extracts a column of values or an associative array (e.g., id => name).
      *
-     * @param string $valueField Campo a ser usado como valor.
-     * @param string|null $keyField Campo a ser usado como chave (opcional).
-     * @param array|null $where Condições opcionais.
-     * @return array Array de valores ou chave => valor.
+     * @param string $valueField The column to use as value.
+     * @param string|null $keyField The column to use as key (optional).
+     * @param array|null $where Optional conditions for filtering.
+     * @return array An array of values or a key-value array.
      */
     public static function pluck(string $valueField, ?string $keyField = null, array $where = null): array;
 }
