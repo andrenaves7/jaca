@@ -5,6 +5,6 @@ class ViewHelperMissingParameterException extends \Exception
 {
     public function __construct(string $param)
     {
-        parent::__construct("The param '$param' is required.");
+        parent::__construct("The param '$param' is missing.");
     }
 }

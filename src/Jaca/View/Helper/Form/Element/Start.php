@@ -1,6 +1,7 @@
 <?php
 namespace Jaca\View\Helper\Form\Element;
 
+use Jaca\Model\Interfaces\IModel;
 use Jaca\View\Helper\Form\FormHelper;
 use Jaca\View\Helper\Interfaces\IHelper;
 use Jaca\Support\Str;
@@ -24,7 +25,7 @@ class Start extends FormHelper implements IHelper
      * @throws ViewHelperMissingParameterException Se o ID não for informado nem inferido.
      * @return string Tag <form> completa de abertura.
      */
-    public function start(?\Jaca\Model\Interfaces\IModel $model = null, ?string $id = null, ?string $action = null, string $method = 'post', array $options = []): string
+    public function start(?IModel $model = null, ?string $id = null, ?string $action = null, string $method = 'post', array $options = []): string
     {
         FormHelper::setModel($model);
 

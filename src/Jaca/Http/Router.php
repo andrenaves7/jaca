@@ -25,7 +25,7 @@ class Router
 			
 			unset($segments[0], $segments[1], $segments[2]);
         } else {
-            $module = 'def';
+            $module = null;
 			$controller = isset($segments[0]) && $segments[0]? $segments[0]: 'index';
 			$action = isset($segments[1]) && $segments[1]? $segments[1]: 'index';
 			
@@ -50,7 +50,7 @@ class Router
 	{
 		$moduleName = $this->prepareModule($moduleName);
 		$dirName = Constants::CONTROLLER_PATH . Constants::URI_SEPARATOR . $moduleName;
-		
+
 		if (is_dir($dirName)) {
 			return true;
 		} else {
@@ -58,8 +58,12 @@ class Router
 		}
 	}
 
-    private function prepareModule(string $module): string
+    private function prepareModule(?string $module): ?string
 	{
+		if (!$module) {
+			return null;
+		}
+
 		$module = explode($this->delimiters[0], str_replace($this->delimiters, $this->delimiters[0], $module));
 	
 		foreach ($module as $key => $value) {
@@ -69,7 +73,7 @@ class Router
 		return implode('', $module);
 	}
 
-    private function prepareController(string $module, string $controller): string
+    private function prepareController(?string $module, string $controller): string
 	{
 		$controller = explode($this->delimiters[0], str_replace($this->delimiters, $this->delimiters[0], $controller));
 		
@@ -78,7 +82,9 @@ class Router
 		}
 		
         $controllerClass  = 'App' . Constants::CB_SEPARATOR;
-		$controllerClass .= ucfirst(strtolower($module)) . Constants::CB_SEPARATOR;
+		if ($module) {
+			$controllerClass .= ucfirst(strtolower($module)) . Constants::CB_SEPARATOR;
+		}
 		$controllerClass .= 'Controllers' . Constants::CB_SEPARATOR;
 		$controllerClass .= implode('', $controller) . 'Controller';
 		

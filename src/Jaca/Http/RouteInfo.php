@@ -3,14 +3,14 @@ namespace Jaca\Http;
 
 class RouteInfo
 {
-    public string $module;
+    public ?string $module;
     public string $controller;
     public string $controllerName;
     public string $action;
     public string $actionName;
     public array $params;
 
-    public function __construct(string $module, string $controller, 
+    public function __construct(?string $module, string $controller, 
         string $controllerName, string $action, string $actionName, array $params)
     {
         $this->module = $module;
