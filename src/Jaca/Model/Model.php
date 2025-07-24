@@ -350,4 +350,39 @@ abstract class Model extends ModelCore implements IModel
     {
         return parent::toArray();
     }
+
+    /**
+     * Extracts a column of values or an associative array (e.g., id => name).
+     *
+     * @param string $valueField The column to use as value.
+     * @param string|null $keyField The column to use as key (optional).
+     * @param array|null $where Optional conditions for filtering.
+     * @return array An array of values or a key-value array.
+     */
+    public static function pluck(string $valueField, ?string $keyField = null, array $where = null): array
+    {
+        $model = new static();
+        $sql = $model->action->select()
+        ->from($model->getTableName(), [$keyField, $valueField]);
+
+        if ($where) {
+            foreach ($where as $key => $val) {
+                $sql->where("{$key} = ?", $val);
+            }
+        }
+        
+        $rows = $sql->fetchAll();
+
+        $result = [];
+
+        foreach ($rows as $row) {
+            if ($keyField !== null) {
+                $result[$row[$keyField]] = $row[$valueField];
+            } else {
+                $result[] = $row[$valueField];
+            }
+        }
+
+        return $result;
+    }
 }

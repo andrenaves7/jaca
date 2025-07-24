@@ -119,4 +119,14 @@ interface IModel
      * @return array An associative array representing the object's public properties.
      */
     public function toArray(): array;
+
+    /**
+     * Extrai uma coluna de valores ou um array associativo (tipo id => name).
+     *
+     * @param string $valueField Campo a ser usado como valor.
+     * @param string|null $keyField Campo a ser usado como chave (opcional).
+     * @param array|null $where Condições opcionais.
+     * @return array Array de valores ou chave => valor.
+     */
+    public static function pluck(string $valueField, ?string $keyField = null, array $where = null): array;
 }
