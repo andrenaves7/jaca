@@ -50,6 +50,8 @@ class TextArea extends FormHelper implements IHelper
 
         $erros = $this->getErrorsListById($id);
 
-        return "<textarea id=\"{$idEsc}\" name=\"{$idEsc}\"{$attr}>{$valueEsc}</textarea>{$erros}";
+        $label = $this->getLabel($id, $metadata->label);
+
+        return "{$label}<textarea id=\"{$idEsc}\" name=\"{$idEsc}\"{$attr}>{$valueEsc}</textarea>{$erros}";
     }
 }

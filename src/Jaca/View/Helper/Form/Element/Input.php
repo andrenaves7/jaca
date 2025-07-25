@@ -31,6 +31,8 @@ class Input extends FormHelper implements IHelper
         $html  = "<input type=\"{$type}\" id=\"{$id}\" name=\"{$id}\" value=\"{$value}\"{$attr} />";
         $html .= $errors;
 
-        return $html;
+        $label = $this->getLabel($id, $metadata->label);
+
+        return $label . $html;
     }
 }

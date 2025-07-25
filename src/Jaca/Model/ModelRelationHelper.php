@@ -27,36 +27,43 @@ class ModelRelationHelper
     }
 
     /**
-     * Recupera a metadata de uma relação (atributo) de um modelo dado.
+     * Retrieves a specific relation attribute instance from a model's property based on metadata.
      *
-     * Esse método busca no modelo informado uma propriedade que possua o atributo
-     * de relacionamento especificado (ex: HasOne, BelongsTo, etc) e opcionalmente filtra
-     * pelo nome da propriedade ou pela classe relacionada.
+     * @param object      $model                 The model instance to inspect.
+     * @param string      $id                    The identifier used to match the property (compared in snake_case).
+     * @param string      $relationAttributeClass The attribute class to look for.
+     * @param string|null $propertyOrRelatedClass Optional: specific property name or related class name to match.
      *
-     * @param object $model Instância do modelo onde buscar a relação.
-     * @param string $relationAttributeClass Nome completo da classe do atributo de relação (ex: HasOne::class).
-     * @param string|null $propertyOrRelatedClass Nome da propriedade do modelo ou nome da classe relacionada
-     *                                            para filtrar o atributo desejado. Se nulo, retorna o primeiro encontrado.
-     * 
-     * @return object|null Instância da metadata do atributo de relacionamento encontrado, ou null se não achar.
+     * @return object|null The relation attribute instance if found, or null.
      */
-    public static function getRelationMeta(object $model, string $relationAttributeClass, ?string $propertyOrRelatedClass = null): ?object
-    {
-        $ref = new \ReflectionClass($model);
+    public static function getRelationMeta(
+        object $model,
+        string $id,
+        string $relationAttributeClass,
+        ?string $propertyOrRelatedClass = null
+    ): ?object {
+        $idSnake = Str::snakeCase($id);
+        $reflection = new \ReflectionClass($model);
 
-        foreach ($ref->getProperties() as $property) {
-            foreach ($property->getAttributes($relationAttributeClass) as $attr) {
-                $instance = $attr->newInstance();
+        foreach ($reflection->getProperties() as $property) {
+            $propertyName = $property->getName();
+            $propertySnake = Str::snakeCase($propertyName);
 
-                if ($propertyOrRelatedClass !== null) {
-                    if ($propertyOrRelatedClass === $property->getName()) {
-                        return $instance;
-                    }
+            if ($propertySnake !== $idSnake) {
+                continue;
+            }
 
-                    if (property_exists($instance, 'related') && $instance->related === $propertyOrRelatedClass) {
-                        return $instance;
-                    }
-                } else {
+            foreach ($property->getAttributes($relationAttributeClass) as $attribute) {
+                $instance = $attribute->newInstance();
+
+                $matchesPropertyName = $propertyOrRelatedClass === $propertyName;
+                $matchesRelatedClass = (
+                    $propertyOrRelatedClass !== null &&
+                    property_exists($instance, 'related') &&
+                    $instance->related === $propertyOrRelatedClass
+                );
+
+                if ($propertyOrRelatedClass === null || $matchesPropertyName || $matchesRelatedClass) {
                     return $instance;
                 }
             }
@@ -66,26 +73,30 @@ class ModelRelationHelper
     }
 
     /**
-     * Retorna o nome do campo que pode ser usado como label em selects para o model relacionado.
-     * Ele ignora a primary key e retorna a primeira propriedade pública disponível.
-     * 
-     * @param string|object $modelClass Nome da classe ou instância do model
-     * @return string|null Nome do campo para label, ou null se não achar nenhum
+     * Returns the name of the field that can be used as a label in selects for the related model.
+     *
+     * Priority:
+     * 1. The first public property marked with #[IsLabel]
+     * 2. The first public property that is not marked with #[PrimaryKey]
+     *
+     * @param string|object $modelClass Class name or model instance.
+     * @return string|null The field name to use as label, or null if none is found.
      */
     public static function getLabelField(string|object $modelClass): ?string
     {
         $ref = new \ReflectionClass($modelClass);
+        $publicProps = $ref->getProperties(\ReflectionProperty::IS_PUBLIC);
 
-        // Primeiro, tenta encontrar uma propriedade marcada com #[IsLabel]
-        foreach ($ref->getProperties(\ReflectionProperty::IS_PUBLIC) as $prop) {
-            if (count($prop->getAttributes(IsLabel::class)) > 0) {
+        // First, look for a property with #[IsLabel]
+        foreach ($publicProps as $prop) {
+            if ($prop->getAttributes(IsLabel::class)) {
                 return $prop->getName();
             }
         }
 
-        // Se não achar, pega o primeiro atributo público que não é PrimaryKey
-        foreach ($ref->getProperties(\ReflectionProperty::IS_PUBLIC) as $prop) {
-            if (count($prop->getAttributes(PrimaryKey::class)) === 0) {
+        // Then, return the first public property that is not a primary key
+        foreach ($publicProps as $prop) {
+            if (empty($prop->getAttributes(PrimaryKey::class))) {
                 return $prop->getName();
             }
         }

@@ -14,7 +14,7 @@ class View
 {
     private bool $renderView = true;
     private bool $renderLayout = true;
-    private array $params;
+    private array $params = [];
     private HttpRequest $request;
     private Data $data;
 	public Form $form;

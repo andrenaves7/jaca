@@ -5,6 +5,7 @@ class InputMetadata
 {
     public string $name;
     public mixed $value;
+    public string $label;
     public bool $required = false;
     public ?int $maxlength = null;
     public string $type = 'string';
@@ -13,6 +14,7 @@ class InputMetadata
     public function __construct(
         string $name,
         mixed $value,
+        string $label,
         bool $required = false,
         ?int $maxlength = null,
         string $type = 'string',
@@ -20,6 +22,7 @@ class InputMetadata
     ) {
         $this->name = $name;
         $this->value = $value;
+        $this->label = $label;
         $this->required = $required;
         $this->maxlength = $maxlength;
         $this->type = $type;

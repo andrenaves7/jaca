@@ -28,7 +28,7 @@ class Select extends FormHelper implements IHelper
         $metadata = $this->getInputMetadata($id);
 
         if (empty($values)) {
-            $relation = ModelRelationHelper::getRelationMeta(FormHelper::getModel(), HasOne::class);
+            $relation = ModelRelationHelper::getRelationMeta(FormHelper::getModel(), $id, HasOne::class);
 
             if ($relation) {
                 $instance = new $relation->related();
@@ -69,6 +69,8 @@ class Select extends FormHelper implements IHelper
 
         $select .= "</select>{$errors}";
 
-        return $select;
+        $label = $this->getLabel($id, $metadata->label);
+
+        return $label . $select;
     }
 }

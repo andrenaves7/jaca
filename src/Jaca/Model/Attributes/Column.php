@@ -9,6 +9,7 @@ class Column
         public string $type = 'string',
         public ?int $length = null,
         public bool $nullable = false,
-        public mixed $default = null
+        public mixed $default = null,
+        public ?string $label = null
     ) {}
 }
