@@ -99,7 +99,7 @@ class Router
 			$action[$key] = ucfirst($value);
 		}
 	
-		return lcfirst(implode('', $action)) . 'Action';
+		return lcfirst(implode('', $action));
 	}
 
     private function prepareParams(array $params): array

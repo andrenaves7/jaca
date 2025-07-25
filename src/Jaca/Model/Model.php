@@ -363,7 +363,9 @@ abstract class Model extends ModelCore implements IModel
     {
         $model = new static();
         $sql = $model->action->select()
-        ->from($model->getTableName(), [$keyField, $valueField]);
+        ->from($model->getTableName(), [
+            $keyField, 
+            $valueField]);
 
         if ($where) {
             foreach ($where as $key => $val) {

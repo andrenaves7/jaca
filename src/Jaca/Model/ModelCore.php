@@ -416,4 +416,16 @@ abstract class ModelCore implements \JsonSerializable
     {
         return $this->toArray();
     }
+
+    /**
+     * Escapes an SQL identifier (e.g., table or column name) to prevent syntax errors or conflicts.
+     * This method is database-specific; for example, it wraps identifiers in double quotes for PostgreSQL.
+     *
+     * @param string $identifier The identifier to escape (e.g., column or table name).
+     * @return string The escaped identifier, safe for use in SQL queries.
+     */
+    public function escapeIdentifier(string $identifier): string
+    {
+        return '"' . str_replace('"', '""', $identifier) . '"';
+    }
 }
