@@ -4,7 +4,10 @@ namespace Jaca\View\Helper\Form;
 use Jaca\Data\Data;
 use Jaca\Model\Attributes\Column;
 use Jaca\Model\Attributes\Label;
+use Jaca\Model\Attributes\Types\DataType;
+use Jaca\Model\Attributes\Types\Text;
 use Jaca\Model\Interfaces\IModel;
+use Jaca\Model\Validation\Attributes\MaxLength;
 use Jaca\Model\Validation\Attributes\Required;
 use Jaca\Support\Str;
 use Jaca\View\Helper\Helper;
@@ -68,6 +71,7 @@ abstract class FormHelper extends Helper
             $propName = $property->getName();
             $columnAttr = $property->getAttributes(Column::class)[0] ?? null;
             $labelAttr = $property->getAttributes(Label::class)[0] ?? null;
+            $maxLenghtAttr = $property->getAttributes(MaxLength::class)[0] ?? null;
 
             $column = $columnAttr ? $columnAttr->newInstance() : null;
             $columnName = $column?->name ?? $propName;
@@ -85,6 +89,7 @@ abstract class FormHelper extends Helper
             if ($matches) {
                 // Label priority: Column attribute > Label attribute > derived from column name
                 $labelValue = $column->label ?? $labelAttr?->newInstance()?->label ?? Str::title($columnName);
+                $maxLenghtValue = $column?->length ?? $maxLenghtAttr?->newInstance()?->max ?? null;
 
                 $value = $property->isInitialized($model) ? $property->getValue($model) : null;
                 $required = count($property->getAttributes(Required::class)) > 0;
@@ -94,8 +99,8 @@ abstract class FormHelper extends Helper
                     value: $value,
                     label: $labelValue,
                     required: $required,
-                    maxlength: $column?->length,
-                    type: $column?->type ?? 'string',
+                    maxlength: $maxLenghtValue,
+                    type: $column?->type ?? DataType::TEXT,
                     nullable: $column?->nullable ?? false
                 );
             }

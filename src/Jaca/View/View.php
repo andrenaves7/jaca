@@ -70,13 +70,12 @@ class View
 	        //header('Content-type:application/json;charset=utf-8');
 	    } else {
     		if ($this->renderView || $return) {
-    			$moduleName = $this->data->routeInfo->module;
+    			$moduleName = $this->modulePath();
     			$controllerName = $this->data->routeInfo->controllerName;
     			$actionName = $this->data->routeInfo->actionName;
     			if (!$url) {
     				$fileName = '../' . Constants::APP_PATH . Constants::URI_SEPARATOR . $moduleName . 
-                        Constants::URI_SEPARATOR . 'views' . 
-                        Constants::URI_SEPARATOR . 'scripts' . Constants::URI_SEPARATOR;
+						'views' . Constants::URI_SEPARATOR . 'scripts' . Constants::URI_SEPARATOR;
     				$fileName .= $controllerName . Constants::URI_SEPARATOR . $actionName . '.phtml';
     			} else {
     				$fileName = __FILE__ . Constants::URI_SEPARATOR . $url;
@@ -103,8 +102,8 @@ class View
 			$layoutFile = Config::get('view', 'default_layout');
 
             if (!$layoutFile) {
-                $layoutFile = APP_PATH . Constants::URI_SEPARATOR . $this->data->routeInfo->module .
-                    Constants::URI_SEPARATOR . 'views' . Constants::URI_SEPARATOR . 'layouts' . 
+                $layoutFile = APP_PATH . Constants::URI_SEPARATOR . $this->modulePath() .
+					'views' . Constants::URI_SEPARATOR . 'layouts' . 
                     Constants::URI_SEPARATOR . Constants::LAYOUT_FILE;
             }
 			
@@ -123,8 +122,8 @@ class View
 	{
 		$layoutFile = Config::get('view', 'default_layout');
 		if (!$layoutFile) {
-            $layoutFile = APP_PATH . Constants::URI_SEPARATOR . $this->data->routeInfo->module .
-                Constants::URI_SEPARATOR . 'views' . Constants::URI_SEPARATOR . 'layouts' . 
+            $layoutFile = APP_PATH . Constants::URI_SEPARATOR . $this->modulePath() .
+                'views' . Constants::URI_SEPARATOR . 'layouts' . 
                 Constants::URI_SEPARATOR . $file;
         } else {
             $layoutFile = $layoutFile . '../' . $file;
@@ -149,5 +148,19 @@ class View
             http_response_code(404);
             throw new TemplateNotFoundException($file);
         }
+	}
+
+	public function renderScriptFile($file)
+	{
+		$load  = APP_PATH . Constants::URI_SEPARATOR . $this->modulePath() .
+		'views' . Constants::URI_SEPARATOR;
+		$load .= 'scripts' . Constants::URI_SEPARATOR . $file;
+		
+		return $this->render($load);
+	}
+
+	private function modulePath():string 
+	{
+		return ($this->data->routeInfo->module ? $this->data->routeInfo->module . Constants::URI_SEPARATOR : '');
 	}
 }

@@ -6,7 +6,7 @@ class Column
 {
     public function __construct(
         public ?string $name = null,       // nome real da coluna no banco
-        public string $type = 'string',
+        public string $type = 'text',
         public ?int $length = null,
         public bool $nullable = false,
         public mixed $default = null,

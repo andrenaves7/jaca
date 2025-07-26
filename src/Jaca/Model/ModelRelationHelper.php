@@ -1,6 +1,7 @@
 <?php
 namespace Jaca\Model;
 
+use Jaca\Model\Attributes\HasOne;
 use Jaca\Model\Attributes\IsLabel;
 use Jaca\Model\Attributes\PrimaryKey;
 use Jaca\Support\Str;
@@ -102,5 +103,32 @@ class ModelRelationHelper
         }
 
         return null;
+    }
+
+    public static function hasOne(object $model, string $id): bool
+    {
+        return ModelRelationHelper::hasAttribute($model, $id, HasOne::class);
+    }
+
+    public static function isPrimary(object $model, string $id): bool
+    {
+        return ModelRelationHelper::hasAttribute($model, $id, PrimaryKey::class);
+    }
+
+    public static function hasAttribute(object $model, string $id, string $attribute): bool
+    {
+        $idSnake = Str::snakeCase($id);
+        $reflection = new \ReflectionClass($model);
+
+        foreach ($reflection->getProperties() as $property) {
+            $propertyName = $property->getName();
+            $propertySnake = Str::snakeCase($propertyName);
+
+            if ($propertySnake === $idSnake) {
+                return $property->getAttributes($attribute) ? true: false;
+            }
+        }
+
+        return false;
     }
 }

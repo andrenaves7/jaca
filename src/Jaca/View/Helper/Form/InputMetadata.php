@@ -1,6 +1,9 @@
 <?php
 namespace   Jaca\View\Helper\Form;
 
+use Jaca\Model\Attributes\Types\Interfaces\IType;
+use Jaca\Model\Attributes\Types\Text;
+
 class InputMetadata
 {
     public string $name;
@@ -8,7 +11,7 @@ class InputMetadata
     public string $label;
     public bool $required = false;
     public ?int $maxlength = null;
-    public string $type = 'string';
+    public ?string $type = null;
     public bool $nullable = false;
 
     public function __construct(
@@ -17,7 +20,7 @@ class InputMetadata
         string $label,
         bool $required = false,
         ?int $maxlength = null,
-        string $type = 'string',
+        ?string $type = null,
         bool $nullable = false
     ) {
         $this->name = $name;

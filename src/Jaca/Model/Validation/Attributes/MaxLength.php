@@ -6,8 +6,8 @@ use Jaca\Model\Validation\Interfaces\IValidator;
 #[\Attribute(\Attribute::TARGET_PROPERTY)]
 class MaxLength implements IValidator
 {
-    private ?string $message;
-    private ?int $max;
+    public ?string $message;
+    public ?int $max;
 
     public function __construct(int $max, string $message = null) {
         $this->message = $message;

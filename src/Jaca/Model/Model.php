@@ -100,7 +100,7 @@ abstract class Model extends ModelCore implements IModel
             $pk = $this->getPrimary();
             $pkValue = $this->$pk;
 
-            $isNew = ($pkValue === null);
+            $isNew = ($pkValue === null || $pkValue === 0);
 
             // Extract column data for insert/update
             $props = $this->extractColumnValues($isNew);

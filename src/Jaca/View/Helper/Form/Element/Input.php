@@ -1,38 +1,63 @@
 <?php
 namespace Jaca\View\Helper\Form\Element;
 
+use Jaca\Model\Attributes\HasOne;
+use Jaca\Model\Attributes\Types\DataType;
+use Jaca\Model\ModelRelationHelper;
 use Jaca\View\Helper\Form\FormHelper;
 use Jaca\View\Helper\Interfaces\IHelper;
+use Jaca\Support\Str;
 
 class Input extends FormHelper implements IHelper
 {
-    public function input(string $id, ?string $value = null, string $type = 'text', array $options = []): string
+    public function input(string $id, array $options = []): string
     {
         $metadata = $this->getInputMetadata($id);
-
-        if ($metadata) {
-            if ($metadata->maxlength !== null) {
-                $options['maxlength'] = $metadata->maxlength;
-            }
-
-            if ($metadata->required) {
-                $options['required'] = true;
-            }
-        }
-
-        if ($value === null) {
-            $value = $metadata?->value ?? $this->getValuesById($id);
-        }
-
-        $value = htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
-        $attr  = $this->getAttr($options);
-        $errors = $this->getErrorsListById($id);
-
-        $html  = "<input type=\"{$type}\" id=\"{$id}\" name=\"{$id}\" value=\"{$value}\"{$attr} />";
-        $html .= $errors;
-
+        $model = FormHelper::getModel();
+        $val = $metadata?->value ?? $this->getValuesById($id);
         $label = $this->getLabel($id, $metadata->label);
 
-        return $label . $html;
+        if ($metadata && $metadata->required) {
+            $options['required'] = true;
+        }
+
+        if ($metadata && $metadata->maxlength !== null) {
+            $options['maxlength'] = $metadata->maxlength;
+        }
+
+        // Se for chave primária, oculta
+        if (ModelRelationHelper::isPrimary($model, $id)) {
+            return (new Text($this->data))->text($id, $val, DataType::HIDDEN, $options);
+        }
+
+        // Se for relação HasOne, monta select com os dados relacionados
+        if (ModelRelationHelper::hasOne($model, $id)) {
+            $relation = ModelRelationHelper::getRelationMeta($model, $id, HasOne::class);
+
+            if ($relation) {
+                $instance = new $relation->related();
+                $localKey = ($relation->localKey !== null && $relation->localKey !== '')
+                        ? $relation->localKey : Str::snakeCase($instance->getPrimary());
+                $localLabel = ModelRelationHelper::getLabelField($relation->related);
+
+                $relationValues = $relation->related::findAll();
+                $values = ['' => ''];
+
+                foreach ($relationValues as $v) {
+                    $values[$v->$localKey] = $v->$localLabel;
+                }
+
+                return $label . (new Select($this->data))->select($id, $values, $options, $val);
+            }
+        }
+        return $label . match ($metadata->type) {
+            DataType::TEXT => (new Text($this->data))->text($id, $val, DataType::TEXT, $options),
+            DataType::LONG_TEXT => (new Textarea($this->data))->textarea($id, $options, $val),
+            DataType::DATETIME => (new Text($this->data))->text($id, $val, DataType::TEXT, $options),
+            DataType::HIDDEN => (new Text($this->data))->text($id, $val, DataType::HIDDEN, $options),
+            DataType::PASSWORD => (new Text($this->data))->text($id, $val, DataType::PASSWORD, $options),
+
+            default => throw new \InvalidArgumentException("Tipo de dado não suportado: {$metadata->type}")
+        };
     }
 }

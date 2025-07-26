@@ -8,7 +8,7 @@ use Jaca\View\Helper\Interfaces\IHelper;
  * Helper para renderizar um campo <textarea> em formulários.
  * Usa metadados para configurar atributos e preencher valores.
  */
-class TextArea extends FormHelper implements IHelper
+class Textarea extends FormHelper implements IHelper
 {
     /**
      * Gera o HTML de um campo <textarea>.
@@ -18,7 +18,7 @@ class TextArea extends FormHelper implements IHelper
      * @param mixed|null $value Valor inicial do campo (pode ser sobrescrito por valores submetidos).
      * @return string HTML do textarea renderizado.
      */
-    public function textArea(string $id, array $options = [], $value = null): string
+    public function textarea(string $id, array $options = [], $value = null): string
     {
         $metadata = $this->getInputMetadata($id);
 
@@ -50,8 +50,6 @@ class TextArea extends FormHelper implements IHelper
 
         $erros = $this->getErrorsListById($id);
 
-        $label = $this->getLabel($id, $metadata->label);
-
-        return "{$label}<textarea id=\"{$idEsc}\" name=\"{$idEsc}\"{$attr}>{$valueEsc}</textarea>{$erros}";
+        return "<textarea id=\"{$idEsc}\" name=\"{$idEsc}\"{$attr}>{$valueEsc}</textarea>{$erros}";
     }
 }

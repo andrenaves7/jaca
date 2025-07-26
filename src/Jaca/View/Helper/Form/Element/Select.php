@@ -25,37 +25,8 @@ class Select extends FormHelper implements IHelper
      */
     public function select(string $id, array $values = [], array $options = [], $selected = null): string
     {
-        $metadata = $this->getInputMetadata($id);
-
-        if (empty($values)) {
-            $relation = ModelRelationHelper::getRelationMeta(FormHelper::getModel(), $id, HasOne::class);
-
-            if ($relation) {
-                $instance = new $relation->related();
-                $localKey = ($relation->localKey !== null && $relation->localKey !== '')
-                        ? $relation->localKey : Str::snakeCase($instance->getPrimary());
-                $localLabel = ModelRelationHelper::getLabelField($relation->related);
-
-                $relationValues = $relation->related::findAll();
-
-                $values = ['' => ''];
-                foreach ($relationValues as $v) {
-                    $values[$v->$localKey] = $v->$localLabel;
-                }
-            }
-        }
-
-        if ($metadata && $metadata->required) {
-            $options['required'] = true;
-        }
-
         $attr = $this->getAttr($options);
         $errors = $this->getErrorsListById($id);
-
-        // Determina o valor selecionado (prioridade: argumento > metadata > valor submetido)
-        if ($selected === null) {
-            $selected = $metadata?->value ?? $this->getValuesById($id);
-        }
 
         $idEsc = htmlspecialchars($id, ENT_QUOTES, 'UTF-8');
         $select = "<select id=\"{$idEsc}\" name=\"{$idEsc}\" {$attr}>";
@@ -69,8 +40,6 @@ class Select extends FormHelper implements IHelper
 
         $select .= "</select>{$errors}";
 
-        $label = $this->getLabel($id, $metadata->label);
-
-        return $label . $select;
+        return $select;
     }
 }

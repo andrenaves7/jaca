@@ -57,8 +57,6 @@ class Radio extends FormHelper implements IHelper
 
         $errors = $this->getErrorsListById($id);
 
-        $label = $this->getLabel($id, $metadata->label);
-
-        return $label . $output . $errors;
+        return $output . $errors;
     }
 }
