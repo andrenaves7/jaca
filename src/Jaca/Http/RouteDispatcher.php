@@ -7,8 +7,28 @@ use Jaca\Support\FlashMessageManager;
 use Jaca\Support\SessionManager;
 use Jaca\View\Helper\Flash\FlashHelper;
 
+/**
+ * Class RouteDispatcher
+ *
+ * Responsible for dispatching the HTTP request to the appropriate controller and action,
+ * handling route resolution and injecting necessary dependencies like request and flash messages.
+ *
+ * @package Jaca\Http
+ */
 class RouteDispatcher
 {
+    /**
+     * Dispatches the current route by instantiating the corresponding controller and invoking the action.
+     *
+     * If the controller or action does not exist, it throws a 404 exception.
+     *
+     * @param Router $router The router instance with resolved route information.
+     * @param HttpRequest $request The current HTTP request object.
+     * @return void
+     *
+     * @throws ControllerNotFoundException If the specified controller class does not exist.
+     * @throws ActionNotFoundException If the specified action method does not exist in the controller.
+     */
     public function dispatch(Router $router, HttpRequest $request): void
     {
         $controllerClass = $router->getRouteInfo()->controller;
