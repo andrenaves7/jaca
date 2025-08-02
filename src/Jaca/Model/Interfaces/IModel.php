@@ -129,4 +129,6 @@ interface IModel
      * @return array An array of values or a key-value array.
      */
     public static function pluck(string $valueField, ?string $keyField = null, array $where = null): array;
+
+    public static function destroy(int|string $id): bool;
 }

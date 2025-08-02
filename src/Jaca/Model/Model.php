@@ -387,4 +387,24 @@ abstract class Model extends ModelCore implements IModel
 
         return $result;
     }
+
+    /**
+     * Deletes a record by its primary key.
+     *
+     * This method attempts to find a record by the given ID and delete it.
+     * If the record does not exist, an exception is thrown.
+     *
+     * @param int|string $id The primary key value of the record to delete.
+     * @return bool True if the record was successfully deleted.
+     *
+     * @throws \Exception If the record with the given ID is not found.
+     */
+    public static function destroy(int|string $id): bool
+    {
+        $instance = static::find($id);
+        if (!$instance) {
+            throw new \Exception("Record with ID {$id} not found.");
+        }
+        return $instance->delete();
+    }
 }

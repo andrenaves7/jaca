@@ -12,10 +12,12 @@ class Input extends FormHelper implements IHelper
 {
     public function input(string $id, array $options = []): string
     {
+        $div = '<div class="form-group ' . $id . '">';
+        $closeDiv = '</div>';
         $metadata = $this->getInputMetadata($id);
         $model = FormHelper::getModel();
         $val = $metadata?->value ?? $this->getValuesById($id);
-        $label = $this->getLabel($id, $metadata->label);
+        $label = $div . $this->getLabel($id, $metadata->label);
 
         if ($metadata && $metadata->required) {
             $options['required'] = true;
@@ -27,7 +29,7 @@ class Input extends FormHelper implements IHelper
 
         // Se for chave primária, oculta
         if (ModelRelationHelper::isPrimary($model, $id)) {
-            return (new Text($this->data))->text($id, $val, DataType::HIDDEN, $options);
+            return (new Text($this->data))->text($id, $val, DataType::HIDDEN, $options) . $closeDiv;
         }
 
         // Se for relação HasOne, monta select com os dados relacionados
@@ -47,7 +49,7 @@ class Input extends FormHelper implements IHelper
                     $values[$v->$localKey] = $v->$localLabel;
                 }
 
-                return $label . (new Select($this->data))->select($id, $values, $options, $val);
+                return $label . (new Select($this->data))->select($id, $values, $options, $val). $closeDiv;
             }
         }
         return $label . match ($metadata->type) {
@@ -58,6 +60,6 @@ class Input extends FormHelper implements IHelper
             DataType::PASSWORD => (new Text($this->data))->text($id, $val, DataType::PASSWORD, $options),
 
             default => throw new \InvalidArgumentException("Tipo de dado não suportado: {$metadata->type}")
-        };
+        } . $closeDiv;
     }
 }
