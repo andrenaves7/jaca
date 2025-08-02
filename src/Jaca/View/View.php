@@ -7,6 +7,7 @@ use Jaca\Config\Constants;
 use Jaca\Data\Data;
 use Jaca\Http\HttpRequest;
 use Jaca\View\Exceptions\TemplateNotFoundException;
+use Jaca\View\Helper\Flash\FlashHelper;
 use Jaca\View\Helper\Form\Form;
 use Jaca\View\Helper\Tag\Tag;
 
@@ -19,14 +20,16 @@ class View
     private Data $data;
 	public Form $form;
 	public Tag $tag;
+	public FlashHelper $flash;
 
-    public function __construct(HttpRequest $request, Data $data)
+    public function __construct(HttpRequest $request, Data $data, FlashHelper $flashHelper)
     {
         $this->request = $request;
         $this->data = $data;
 
 		$this->form = new Form($this->data);
 		$this->tag = new Tag($this->data);
+		$this->flash = $flashHelper;
     }
 
     public function setParam($key, $val): void

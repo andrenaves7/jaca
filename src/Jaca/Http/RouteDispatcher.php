@@ -3,6 +3,9 @@ namespace Jaca\Http;
 
 use Jaca\Http\Exceptions\ActionNotFoundException;
 use Jaca\Http\Exceptions\ControllerNotFoundException;
+use Jaca\Support\FlashMessageManager;
+use Jaca\Support\SessionManager;
+use Jaca\View\Helper\Flash\FlashHelper;
 
 class RouteDispatcher
 {
@@ -17,7 +20,13 @@ class RouteDispatcher
             throw new ControllerNotFoundException($controllerClass);
         }
 
-        $controller = new $controllerClass($request, $router->getRouteInfo());
+        $flashMessage = new FlashMessageManager(
+            SessionManager::getInstance()
+        );
+
+        $flashMessages = new FlashHelper($flashMessage->getAll());
+
+        $controller = new $controllerClass($request, $router->getRouteInfo(), $flashMessages);
 
         if (!method_exists($controller, $action)) {
             http_response_code(404);
