@@ -6,6 +6,7 @@ use Jaca\Database\Interfaces\IAction;
 use Jaca\Database\Interfaces\ISelect;
 use Jaca\Model\Attributes\BelongsTo;
 use Jaca\Model\Attributes\Column;
+use Jaca\Model\Attributes\Enum;
 use Jaca\Model\Attributes\HasAndBelongsToMany;
 use Jaca\Model\Attributes\HasMany;
 use Jaca\Model\Attributes\HasOne;
@@ -220,31 +221,32 @@ abstract class Model extends ModelCore implements IModel
     }
 
     /**
-     * Handles dynamic access to related models based on relationship attributes.
+     * Magic method to handle dynamic method calls.
      *
-     * This method allows calling relationship methods like $user->roles() or $post->author()
-     * without explicitly defining them. It detects which relationship (BelongsTo, HasOne,
-     * HasMany, HasAndBelongsToMany) matches the requested name, based on the metadata
-     * defined in attributes like #[BelongsTo], #[HasMany], etc.
+     * Supports:
+     * - Methods ending with 'Label', which will call getLabel() for the corresponding property.
+     * - Dynamic relation getters, by matching method names to related model class names.
      *
-     * The method resolves the called name (e.g. 'user') to a related model class
-     * and dispatches the appropriate relationship loader method.
+     * @param string $name The method name called.
+     * @param array $args The arguments passed to the method.
      *
-     * Example usage:
-     * $role = Role::find(1);
-     * $user = $role->user(); // Automatically resolves #[BelongsTo(User::class)]
+     * @return mixed The result of the dynamic call (label string or related model).
      *
-     * @param string $name The called method name (e.g. 'user', 'roles').
-     * @param array $args Arguments passed to the method (not used).
-     *
-     * @return mixed The related model(s) returned by the resolved relationship method.
-     *
-     * @throws \Exception If no matching relationship is found for the given method name.
+     * @throws \Exception When no matching dynamic method or relation is found.
      */
     public function __call(string $name, array $args)
     {
-        $studlyName = Str::studly($name);
+        // Handle Label methods like statusLabel()
+        if (substr($name, -5) === 'Label') {
+            $property = substr($name, 0, -5);
+            if (!property_exists($this, $property)) {
+                throw new \Exception("Property '{$property}' does not exist in " . static::class);
+            }
+            return $this->getLabel($property);
+        }
 
+        // Resolve relations dynamically
+        $studlyName = Str::studly($name);
         $relations = [
             BelongsTo::class => 'getOwner',
             HasOne::class => 'hasOne',
@@ -258,7 +260,6 @@ abstract class Model extends ModelCore implements IModel
             foreach ($attributes as $attr) {
                 $meta = $attr->newInstance();
                 $related = $meta->related;
-
                 $ref = new \ReflectionClass($related);
                 $relatedShortName = $ref->getShortName();
 
@@ -268,7 +269,41 @@ abstract class Model extends ModelCore implements IModel
             }
         }
 
-        throw new \Exception("No relationship found for '{$name}' in " . static::class);
+        throw new \Exception("No relationship or dynamic method '{$name}' found in " . static::class);
+    }
+
+    /**
+     * Retrieves the label associated with an enum-like property.
+     *
+     * This method uses reflection to inspect the specified property for the
+     * #[Enum] attribute. If found, it returns the corresponding label for
+     * the current value of that property. If no label is defined, it returns
+     * the raw value.
+     *
+     * @param string $property The name of the property to get the label for.
+     * @return string|null The label corresponding to the property value, or null if not found or invalid.
+     */
+    public function getLabel(string $property): ?string
+    {
+        try {
+            $refClass = new \ReflectionClass($this);
+            if (!$refClass->hasProperty($property)) {
+                return null;
+            }
+
+            $refProp = $refClass->getProperty($property);
+            $attrs = $refProp->getAttributes(Enum::class);
+
+            if ($attrs) {
+                $enum = $attrs[0]->newInstance();
+                $value = $this->$property;
+                return $enum->values[$value] ?? $value;
+            }
+
+            return $this->$property;
+        } catch (\ReflectionException $e) {
+            return null;
+        }
     }
 
     /**

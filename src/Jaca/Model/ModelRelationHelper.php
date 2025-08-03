@@ -1,6 +1,7 @@
 <?php
 namespace Jaca\Model;
 
+use Jaca\Model\Attributes\Enum;
 use Jaca\Model\Attributes\HasOne;
 use Jaca\Model\Attributes\IsLabel;
 use Jaca\Model\Attributes\PrimaryKey;
@@ -113,6 +114,11 @@ class ModelRelationHelper
     public static function isPrimary(object $model, string $id): bool
     {
         return ModelRelationHelper::hasAttribute($model, $id, PrimaryKey::class);
+    }
+
+    public static function enum(object $model, string $id): bool
+    {
+        return ModelRelationHelper::hasAttribute($model, $id, Enum::class);
     }
 
     public static function hasAttribute(object $model, string $id, string $attribute): bool
