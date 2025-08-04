@@ -22,7 +22,7 @@ use Jaca\Support\Str;
  */
 class Input extends FormHelper implements IHelper
 {
-    
+
     /**
      * Generates the HTML for an input form element.
      *
@@ -58,7 +58,7 @@ class Input extends FormHelper implements IHelper
 
         // Se for chave primária, oculta
         if (ModelRelationHelper::isPrimary($model, $id)) {
-            return (new Text($this->data))->text($id, $val, DataType::HIDDEN, $options) . $closeDiv;
+            return (new Text($this->data))->text($id, $val, DataType::HIDDEN, $options);
         }
 
         // Se for relação HasOne, monta select com os dados relacionados
@@ -101,6 +101,7 @@ class Input extends FormHelper implements IHelper
             DataType::DATETIME => (new Text($this->data))->text($id, $val, DataType::TEXT, $options),
             DataType::HIDDEN => (new Text($this->data))->text($id, $val, DataType::HIDDEN, $options),
             DataType::PASSWORD => (new Text($this->data))->text($id, $val, DataType::PASSWORD, $options),
+            DataType::FILE => (new Text($this->data))->text($id, $val, DataType::FILE, $options),
 
             default => throw new \InvalidArgumentException("Tipo de dado não suportado: {$metadata->type}")
         } . $closeDiv;

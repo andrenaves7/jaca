@@ -4,6 +4,7 @@ namespace Jaca\Model;
 use Jaca\Database\ActionFactory;
 use Jaca\Database\Interfaces\IAction;
 use Jaca\Database\Interfaces\ISelect;
+use Jaca\Http\HttpRequest;
 use Jaca\Model\Attributes\BelongsTo;
 use Jaca\Model\Attributes\Column;
 use Jaca\Model\Attributes\Enum;
@@ -11,7 +12,9 @@ use Jaca\Model\Attributes\HasAndBelongsToMany;
 use Jaca\Model\Attributes\HasMany;
 use Jaca\Model\Attributes\HasOne;
 use Jaca\Model\Attributes\ReadOnlyAttr;
+use Jaca\Model\Attributes\Types\DataType;
 use Jaca\Model\Interfaces\IModel;
+use Jaca\Support\Collection;
 use Jaca\Support\Str;
 
 /**
@@ -55,6 +58,32 @@ abstract class Model extends ModelCore implements IModel
         $instance = new static();
         $instance->fill($data);
         return $instance;
+    }
+
+    public static function fromRequest(HttpRequest $request): static
+    {
+        $model = new static();
+
+        foreach ((new \ReflectionClass($model))->getProperties() as $property) {
+            $name = $property->getName();
+            $type = null;
+
+            foreach ($property->getAttributes(Column::class) as $attr) {
+                $args = $attr->getArguments();
+                $type = $args['type'] ?? null;
+            }
+
+            if ($type === DataType::FILE) {
+                $file = $request->file($name);
+                if ($file && $file['error'] === UPLOAD_ERR_OK) {
+                    $model->$name = $file; // ou só $file['name'], se quiser guardar o nome
+                }
+            } else {
+                $model->$name = $request->post($name);
+            }
+        }
+
+        return $model;
     }
 
     /**
@@ -441,5 +470,27 @@ abstract class Model extends ModelCore implements IModel
             throw new \Exception("Record with ID {$id} not found.");
         }
         return $instance->delete();
+    }
+    
+    /**
+     * Determine whether the model has any file-type fields.
+     *
+     * This method uses reflection to inspect the model's properties and checks
+     * if any of them are annotated with a Column attribute of type FILE.
+     *
+     * @return bool True if at least one property is of type FILE, false otherwise.
+     */
+    public function hasFileField(): bool
+    {
+        $ref = new \ReflectionClass($this);
+
+        $properties = Collection::make($ref->getProperties());
+
+        return $properties->filter(fn($property) => 
+            Collection::make($property->getAttributes(Column::class))
+                ->some(fn($attr) => 
+                    ($attr->getArguments()['type'] ?? null) === DataType::FILE
+                )
+        )->count() > 0;
     }
 }

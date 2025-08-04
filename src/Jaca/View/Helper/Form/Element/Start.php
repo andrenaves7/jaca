@@ -29,9 +29,13 @@ class Start extends FormHelper implements IHelper
     {
         FormHelper::setModel($model);
 
+        $enctype = '';
+
         // Se model existe e id não foi fornecido, gera id baseado na classe do model
         if ($model && !$id) {
             $id = str_replace('\\', '_', Str::snakeCase(get_class($model)));
+
+            $enctype = $model->hasFileField() ? ' enctype="multipart/form-data"' : '';
         }
 
         if (!$id) {
@@ -50,6 +54,6 @@ class Start extends FormHelper implements IHelper
 
         $attr = $this->getAttr($options);
 
-        return "<form id=\"{$idEsc}\" action=\"{$actionEsc}\" method=\"{$methodEsc}\"{$attr}>";
+        return "<form id=\"{$idEsc}\" action=\"{$actionEsc}\" method=\"{$methodEsc}\"{$attr}{$enctype}>";
     }
 }

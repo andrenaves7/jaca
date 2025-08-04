@@ -14,5 +14,6 @@ class DataType
     public const RADIO = 'radio';
     public const LIST = 'list';
     public const FILE = 'file';
+    public const FILES = 'files';
     public const HIDDEN = 'hidden';
 }

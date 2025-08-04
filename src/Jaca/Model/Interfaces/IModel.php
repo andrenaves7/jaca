@@ -130,5 +130,26 @@ interface IModel
      */
     public static function pluck(string $valueField, ?string $keyField = null, array $where = null): array;
 
+    /**
+     * Deletes a record by its primary key.
+     *
+     * This method attempts to find a record by the given ID and delete it.
+     * If the record does not exist, an exception is thrown.
+     *
+     * @param int|string $id The primary key value of the record to delete.
+     * @return bool True if the record was successfully deleted.
+     *
+     * @throws \Exception If the record with the given ID is not found.
+     */
     public static function destroy(int|string $id): bool;
+
+    /**
+     * Determine whether the model has any file-type fields.
+     *
+     * This method uses reflection to inspect the model's properties and checks
+     * if any of them are annotated with a Column attribute of type FILE.
+     *
+     * @return bool True if at least one property is of type FILE, false otherwise.
+     */
+    public function hasFileField(): bool;
 }

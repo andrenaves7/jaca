@@ -130,4 +130,20 @@ class Collection implements IteratorAggregate, Countable
     {
         return count($this->items);
     }
+
+    /**
+     * Determine if any item passes the given test.
+     *
+     * @param callable $callback
+     * @return bool
+     */
+    public function some(callable $callback): bool
+    {
+        foreach ($this->items as $key => $item) {
+            if ($callback($item, $key)) {
+                return true;
+            }
+        }
+        return false;
+    }
 }
