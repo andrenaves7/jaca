@@ -83,12 +83,13 @@ class HttpRequest
     /**
      * Get a file upload by key.
      *
-     * @param string $key
+     * @param string|null $key
+     * @param mixed|null $default
      * @return mixed|null
      */
-    public function file(string $key): mixed
+    public function file(string $key = null, $default = null): mixed
     {
-        return $this->files[$key] ?? null;
+        return $key === null ? $this->files : ($this->files[$key] ?? $default);
     }
 
     /**

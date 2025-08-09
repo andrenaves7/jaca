@@ -15,6 +15,7 @@ use Jaca\Model\Attributes\ReadOnlyAttr;
 use Jaca\Model\Attributes\Types\DataType;
 use Jaca\Model\Interfaces\IModel;
 use Jaca\Support\Collection;
+use Jaca\Support\FileUploader;
 use Jaca\Support\Str;
 
 /**
@@ -38,6 +39,14 @@ abstract class Model extends ModelCore implements IModel
     protected IAction $action;
 
     /**
+     * Holds temporarily uploaded files before they are persisted.
+     * The key is the model field name, and the value is the uploaded file array (from $_FILES).
+     *
+     * @var array<string, array<string, mixed>>
+     */
+    private array $pendingFiles  = [];
+
+    /**
      * Model constructor.
      * Initializes parent and creates the IAction instance via factory.
      */
@@ -45,6 +54,20 @@ abstract class Model extends ModelCore implements IModel
     {
         parent::__construct();
         $this->action = ActionFactory::create();
+    }
+
+    /**
+     * Stores an uploaded file in the pending files list.
+     * This does not save the file to permanent storage yet — that happens during save().
+     *
+     * @param string $field The name of the model field associated with the file.
+     * @param array<string, mixed> $file The uploaded file array from $_FILES.
+     *
+     * @return void
+     */
+    public function setPendingFile(string $field, array $file): void
+    {
+        $this->pendingFiles [$field] = $file;
     }
 
     /**
@@ -60,29 +83,52 @@ abstract class Model extends ModelCore implements IModel
         return $instance;
     }
 
+    /**
+     * Creates a new model instance from an HttpRequest object.
+     * Maps request POST and FILES data to the model properties
+     * based on the Column attribute metadata.
+     *
+     * For properties with DataType::FILE, the uploaded file is stored
+     * in the pending files list for later processing during save().
+     *
+     * @param HttpRequest $request The incoming HTTP request.
+     *
+     * @return static The hydrated model instance.
+     */
     public static function fromRequest(HttpRequest $request): static
     {
         $model = new static();
+        $reflection = new \ReflectionClass($model);
+        $properties = [];
 
-        foreach ((new \ReflectionClass($model))->getProperties() as $property) {
-            $name = $property->getName();
-            $type = null;
-
-            foreach ($property->getAttributes(Column::class) as $attr) {
-                $args = $attr->getArguments();
-                $type = $args['type'] ?? null;
-            }
-
-            if ($type === DataType::FILE) {
-                $file = $request->file($name);
-                if ($file && $file['error'] === UPLOAD_ERR_OK) {
-                    $model->$name = $file; // ou só $file['name'], se quiser guardar o nome
-                }
-            } else {
-                $model->$name = $request->post($name);
-            }
+        foreach ($reflection->getProperties() as $property) {
+            $properties[strtolower($property->getName())] = $property;
         }
 
+        // Merge GET e POST
+        $data = array_merge(
+            $request->get() ?? [],
+            $request->post() ?? []
+        );
+
+        foreach ($data as $key => $value) {
+            $propName = Str::camelCase($key);
+            if (isset($properties[strtolower($propName)])) {
+                $model->$propName = $value;
+            }
+        }
+        
+        // Tratamento dos arquivos
+        foreach ($request->file() ?? [] as $key => $file) {
+            $propName = Str::camelCase($key);
+            if (isset($properties[strtolower($propName)])) {
+                if ($file && $file['error'] === UPLOAD_ERR_OK) {
+                    $model->setPendingFile($propName, $file);
+                    $model->$propName = $file['name'];
+                }
+            }
+        }
+        
         return $model;
     }
 
@@ -126,6 +172,7 @@ abstract class Model extends ModelCore implements IModel
      */
     public function save(): bool
     {
+        $saved = false;
         if ($this->isValid()) {
             $pk = $this->getPrimary();
             $pkValue = $this->$pk;
@@ -138,13 +185,27 @@ abstract class Model extends ModelCore implements IModel
             if ($isNew) {
                 $id = $this->action->insert($this->getTableName(), $props);
                 $this->$pk = $id;
-                return true;
+                $saved = true;
             } else {
-                return $this->action->update($this->getTableName(), $props, [$pk => $pkValue]);
+                $saved = $this->action->update($this->getTableName(), $props, [$pk => $pkValue]);
+            }
+
+            if ($saved && !empty($this->pendingFiles)) {
+                foreach ($this->pendingFiles as $field => $file) {
+                    if ($file['error'] === UPLOAD_ERR_OK) {
+                        $fileName = FileUploader::store($file, $field);
+                        echo $fileName . '<br />';
+                        $this->$field = $fileName;
+                        $props = $this->extractColumnValues(false);
+                        $saved = $this->action->update($this->getTableName(), $props, [$pk => $this->$pk]);
+                    }
+                }
             }
         } else {
-            return false;
+            $saved = false;
         }
+        
+        return $saved;
     }
 
     /**
