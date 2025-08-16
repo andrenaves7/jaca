@@ -14,6 +14,7 @@ use Jaca\Model\Attributes\HasOne;
 use Jaca\Model\Attributes\ReadOnlyAttr;
 use Jaca\Model\Attributes\Types\DataType;
 use Jaca\Model\Interfaces\IModel;
+use Jaca\Model\Attributes\FileValidation;
 use Jaca\Support\Collection;
 use Jaca\Support\FileUploader;
 use Jaca\Support\Str;
@@ -122,7 +123,32 @@ abstract class Model extends ModelCore implements IModel
         foreach ($request->file() ?? [] as $key => $file) {
             $propName = Str::camelCase($key);
             if (isset($properties[strtolower($propName)])) {
+                $property = $properties[strtolower($propName)];
+
+                $fileValidations = $property->getAttributes(FileValidation::class);
                 if ($file && $file['error'] === UPLOAD_ERR_OK) {
+                    foreach ($fileValidations as $attr) {
+                        $rule = $attr->newInstance();
+
+                        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+
+                        if ($rule->extensions && !in_array($ext, $rule->extensions, true)) {
+                            $model->setErrors($key, $rule->getMessage('extensions', $file['name'], null, $rule->extensions));
+                        }
+
+                        if ($rule->maxSize && $file['size'] > $rule->maxSize) {
+                            $model->setErrors($key, $rule->getMessage('size', $file['name'], $rule->maxSize));
+                        }
+
+                        if ($rule->mimeTypes) {
+                            $finfo = new \finfo(FILEINFO_MIME_TYPE);
+                            $mime = $finfo->file($file['tmp_name']);
+                            if (!in_array($mime, $rule->mimeTypes, true)) {
+                                $model->setErrors($key, $rule->getMessage('mime', $file['name'], null, $rule->mimeTypes));
+                            }
+                        }
+                    }
+
                     $model->setPendingFile($propName, $file);
                     $model->$propName = $file['name'];
                 }
@@ -194,7 +220,6 @@ abstract class Model extends ModelCore implements IModel
                 foreach ($this->pendingFiles as $field => $file) {
                     if ($file['error'] === UPLOAD_ERR_OK) {
                         $fileName = FileUploader::store($file, $field);
-                        echo $fileName . '<br />';
                         $this->$field = $fileName;
                         $props = $this->extractColumnValues(false);
                         $saved = $this->action->update($this->getTableName(), $props, [$pk => $this->$pk]);

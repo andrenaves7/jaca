@@ -345,7 +345,7 @@ abstract class ModelCore implements \JsonSerializable
      */
     public function isValid(): bool
     {
-        $this->errors = [];
+        //$this->errors = [];
 
         foreach ($this->getPublicProperties(false) as $property) {
             $value = $this->{$property->getName()};
@@ -373,6 +373,22 @@ abstract class ModelCore implements \JsonSerializable
     public function getErrors(): array
     {
         return $this->errors;
+    }
+
+    /**
+     * Adds an error message to a specific field.
+     *
+     * This method appends the given error message to the array of errors
+     * for the specified key. Multiple messages for the same key are stored
+     * as an array.
+     *
+     * @param string $key The field or property name associated with the error.
+     * @param string $val The error message to add.
+     * @return void
+     */
+    public function setErrors(string $key, string $val): void
+    {
+        $this->errors[$key][] = $val;
     }
 
     /**
